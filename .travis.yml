@@ -17,3 +17,22 @@ script:
     - cmake -G "Unix Makefiles" -DCMAKE_PREFIX_PATH=$PWD/clang+llvm-3.9.0-x86_64-linux-gnu-ubuntu-14.04 .
     - make
     - make check
+
+env:
+    global:
+        # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+        # via the "travis encrypt" command using the project repo's public key
+        - secure: "iYAvTrVu+EvZRFhWhOALVqzfCN1VajbxWCK5ZbnrW5XqgTQ5KHF/id7563quTbXxRXvd9pvyWXcAKkq9M0WMvFieIGGZS74W6dp0xc8S4fi569B/4HZS7jjGnLJ7dZnX2M35phEZHDd722F1GgFeNkoGJ4sFMng7Yhd173IpbiChbYOGBxE7Rf4ZsqFG61PWJLVTEQI92JihSFQGIb+XWX36dw+vUlGHtitM+h/OOPCrFVWpytYYscDWX8/E/oQ0lcWCFeZ8fl0Wc3QYOGC/rH3fWPBN1YGIBfIQTarVBZKqZPXRFEEPkRuZtmBJVETiKYQvLOyrRbp8nufGTnIdMlWvpoqjS5f3v0e22pcO5SBPrGKwPkhHRm7fHzTw0AkV2RmkCvRkmP8CAOXpC8SwXagj3uhX7hEqV4DzkSXlBJYpGRiTXahSMCPMQSUxVhvH0784u8KchF/vKpFhh9nQD6V3E63bHdLju055iMqsSeXX2fvs7LQZhCZK1bJSyqjLHCvdDEqBGplBentsO1+gkaasiIIot3uhoZKD0OT4Q7aHqMUwSlud1AeBSU8FZDA8ka+zMsuLpn1hIQKDZFkp3AVDznzzGck9HJ33lyJFwHFdl47ad4FrHtAcjAFXQdYhxiO4R1ECoYFIIcN2+BtfgqNnJY2DXAZRJJfhDpnxnY4="
+
+before_install:
+    - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
+
+addons:
+    coverity_scan:
+        project:
+            name: "emlai/delta"
+            description: "A modern systems programming language"
+        notification_email: emil@cs.helsinki.fi
+        build_command_prepend: "cmake -G 'Unix Makefiles' .; make clean"
+        build_command: "make"
+        branch_pattern: coverity_scan
