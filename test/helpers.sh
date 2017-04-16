@@ -54,7 +54,7 @@ check_error() {
 
 diff_output() {
     expected_output=$(cat $2)
-    actual_output=$($path_to_delta $1)
+    actual_output=$($path_to_delta -no-debug-info $1)
     output_prefix=$3
     diff <(echo "$actual_output") <(echo "$output_prefix$expected_output")
 }

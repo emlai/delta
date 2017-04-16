@@ -87,6 +87,7 @@ void printHelp() {
         "OPTIONS:\n"
         "  -c                    - Compile only, generating an .o file; don't link\n"
         "  -emit-assembly        - Emit assembly code\n"
+        "  -no-debug-info        - Don't generate debug symbols\n"
         "  -parse                - Perform parsing\n"
         "  -typecheck            - Perform parsing and type checking\n"
         "  -help                 - Display this help\n"
@@ -111,6 +112,7 @@ int main(int argc, char** argv) {
     const bool printAST = checkFlag("-print-ast", args);
     const bool outputToStdout = checkFlag("-o=stdout", args);
     const bool emitAssembly = checkFlag("-emit-assembly", args) || checkFlag("-S", args);
+    const bool noDebugInfo = checkFlag("-no-debug-info", args);
     const std::vector<llvm::StringRef> includePaths = collectStringOptionValues("-I", args);
 
     for (llvm::StringRef arg : args) {
@@ -141,7 +143,7 @@ int main(int argc, char** argv) {
 
     if (typecheckFlag) return 0;
 
-    auto& irModule = irgen::compile(module);
+    auto& irModule = irgen::compile(module, !noDebugInfo);
 
     if (outputToStdout) {
         irModule.print(llvm::outs(), nullptr);

@@ -3,12 +3,14 @@
 #include <memory>
 #include <cassert>
 #include <llvm/ADT/STLExtras.h>
+#include <llvm/Support/Path.h>
 #include <llvm/Support/ErrorHandling.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/IR/CFG.h>
 #include "irgen.h"
+#include "debuginfo.h"
 #include "../ast/mangle.h"
 #include "../ast/expr.h"
 #include "../ast/decl.h"
@@ -18,6 +20,7 @@
 #include "../driver/utility.h"
 
 using namespace delta;
+using namespace delta::irgen;
 
 namespace {
 
@@ -53,6 +56,8 @@ public:
 llvm::LLVMContext ctx;
 llvm::IRBuilder<> builder(ctx);
 llvm::Module module("", ctx);
+bool generateDebugInfo;
+
 std::unordered_map<std::string, llvm::Function*> funcs;
 std::unordered_map<std::string, std::pair<llvm::StructType*, const TypeDecl*>> structs;
 std::unordered_map<std::string, llvm::Type*> currentGenericArgs;
@@ -434,6 +439,8 @@ llvm::Value* codegenBuiltinConversion(const Expr& expr, Type type) {
 }
 
 llvm::Value* codegen(const CallExpr& expr) {
+    if (generateDebugInfo) setDebugLoc(builder, expr);
+
     if (expr.isInitializerCall && Type::isBuiltinScalar(expr.getFuncName()))
         return codegenBuiltinConversion(*expr.args.front().value, expr.getType());
 
@@ -917,8 +924,12 @@ void codegenFuncBody(const FuncDecl& decl, llvm::Function& func) {
 void codegen(const FuncDecl& decl) {
     auto it = funcs.find(mangle(decl));
     auto* func = it == funcs.end() ? codegenFuncProto(decl) : it->second;
-    if (!decl.isExtern()) codegenFuncBody(decl, *func);
-    assert(!llvm::verifyFunction(*func, &llvm::errs()));
+    if (!decl.isExtern()) {
+        codegenFuncBody(decl, *func);
+        if (generateDebugInfo) emitDebugInfo(decl, func);
+    }
+    // Cannot verify before DIBuilder::finalize().
+    if (!generateDebugInfo) assert(!llvm::verifyFunction(*func, &llvm::errs()));
 }
 
 void codegen(const InitDecl& decl) {
@@ -986,11 +997,21 @@ void codegen(const Decl& decl) {
 
 } // anonymous namespace
 
-llvm::Module& irgen::compile(const Module& sourceModule) {
+llvm::Module& irgen::compile(const Module& sourceModule, bool generateDebugInfo) {
+    ::generateDebugInfo = generateDebugInfo;
+
     for (const auto& fileUnit : sourceModule.getFileUnits()) {
+        if (generateDebugInfo) {
+            llvm::StringRef filename = llvm::sys::path::filename(fileUnit.getFilePath());
+            llvm::StringRef directory = llvm::sys::path::parent_path(fileUnit.getFilePath()); // TODO: Make absolute?
+            initDebugInfo(ctx, filename, directory, module, false /* isOptimized */, "" /* flags */);
+        }
         for (const auto& decl : fileUnit.getTopLevelDecls()) {
             currentDecl = decl.get();
             codegen(*decl);
+        }
+        if (generateDebugInfo) {
+            finalizeDebugInfo();
         }
     }
 

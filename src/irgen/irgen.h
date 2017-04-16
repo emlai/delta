@@ -7,7 +7,7 @@ namespace delta {
 class Module;
 
 namespace irgen {
-    llvm::Module& compile(const Module& module);
+    llvm::Module& compile(const Module& module, bool generateDebugInfo);
 }
 
 }
