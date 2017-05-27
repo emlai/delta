@@ -1,0 +1,10 @@
+// RUN: %delta -typecheck %s | %FileCheck %s
+
+// CHECK: asfd
+func foo<T, U>(T a, T b, T c) -> U {
+    return a + b + c
+}
+
+func main() {
+    _ = foo(1, 2, 3)
+}

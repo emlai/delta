@@ -275,11 +275,17 @@ void validateArgs(const std::vector<Arg>& args, const std::vector<ParamDecl>& pa
                   const std::string& funcName, SrcLoc srcLoc);
 
 void setCurrentGenericArgs(GenericFuncDecl& decl, CallExpr& call) {
+    // TODO: When too few generic arguments are given, deduce the rest.
+
     if (call.genericArgs.empty()) {
         call.genericArgs.reserve(decl.genericParams.size());
         // FIXME: The args will also be typechecked by validateArgs()
         // after this function. Get rid of this duplicated typechecking.
+        llvm::string
+
         for (auto& arg : call.args) call.genericArgs.emplace_back(typecheck(*arg.value));
+
+        assert(call.genericArgs.size() == decl.genericParams.size());
     }
     else if (call.genericArgs.size() < decl.genericParams.size()) {
         error(call.srcLoc, "too few generic arguments to '", call.getFuncName(),
