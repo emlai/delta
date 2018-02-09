@@ -21,10 +21,6 @@ Also check out the [standard library API reference](https://delta-lang.github.io
 
 ## Building from source
 
-Clone the repository including its submodules:
-
-    git clone --recursive https://github.com/delta-lang/delta.git
-
 Building Delta from source requires the following dependencies: a C++14
 compiler, [CMake](https://cmake.org), [libedit](http://thrysoee.dk/editline/),
 and the [LLVM](http://llvm.org) and [Clang](http://clang.llvm.org) libraries

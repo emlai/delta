@@ -78,7 +78,6 @@ after_success:
               --exclude test \
               --exclude llvm \
               --exclude $LLVM_TARBALL_NAME \
-              --exclude CMakeFiles \
-              --exclude extlibs;
+              --exclude CMakeFiles;
           scripts/update-delta-sandbox.sh;
       fi
