@@ -1354,8 +1354,16 @@ std::unique_ptr<EnumDecl> Parser::parseEnumDecl(std::vector<GenericParamDecl>* g
     while (currentToken() != Token::RightBrace) {
         parse(Token::Case);
         auto caseName = parse(Token::Identifier);
+        Type associatedType;
+
+        if (currentToken() == Token::LeftParen) {
+            consumeToken();
+            associatedType = parseType();
+            parse(Token::RightParen);
+        }
+
         auto value = llvm::make_unique<IntLiteralExpr>(valueCounter.getExtValue(), caseName.getLocation());
-        cases.emplace_back(caseName.getString(), std::move(value), caseName.getLocation());
+        cases.emplace_back(caseName.getString(), std::move(value), associatedType, caseName.getLocation());
         parseStmtTerminator("after enum case");
         ++valueCounter;
     }

@@ -1,0 +1,38 @@
+struct S {
+    init() { b = false; }
+    var b: bool;
+}
+
+enum E {
+    case A;
+    case B(int);
+    case C(S);
+}
+
+func f() {
+    var e = E.A;
+    e = E.B(42);
+    e = E.C(S());
+    
+    switch (e) {
+        case E.A: 
+        case E.B(let foo): 
+        case E.C(let bar):
+    }
+}
+
+
+union E {
+    struct A {}
+    case B;
+    case C;
+}
+
+switch (e.type) {
+case E_A:
+    e.foo
+}
+
+if (e == E.A) {
+    e.foo
+}

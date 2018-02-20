@@ -355,15 +355,17 @@ private:
 
 class EnumCase {
 public:
-    EnumCase(std::string&& name, std::unique_ptr<Expr> value, SourceLocation location)
-    : name(std::move(name)), value(std::move(value)), location(location) {}
+    EnumCase(std::string&& name, std::unique_ptr<Expr> value, Type associatedType, SourceLocation location)
+    : name(std::move(name)), value(std::move(value)), associatedType(associatedType), location(location) {}
     llvm::StringRef getName() const { return name; }
     Expr* getValue() const { return value.get(); }
+    Type getAssociatedType() const { return associatedType; }
     SourceLocation getLocation() const { return location; }
 
 private:
     std::string name;
     std::unique_ptr<Expr> value;
+    Type associatedType;
     SourceLocation location;
 };
 
