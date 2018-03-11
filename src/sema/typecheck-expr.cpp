@@ -328,7 +328,10 @@ void Typechecker::typecheckAssignment(Expr& lhs, Expr* rhs, Type rightType, Sour
     }
 
     if (rhsType && !rhsType.isImplicitlyCopyable() && !lhsType.removeOptional().isPointerType()) {
-        if (rhs) rhs->setMoved(true);
+        if (rhs) {
+            checkCanMove(*rhs);
+            rhs->setMoved(true);
+        }
         lhs.setMoved(false);
     }
 
@@ -1106,9 +1109,8 @@ Type Typechecker::typecheckCallExpr(CallExpr& expr) {
         auto decls = findCalleeCandidates(expr, callee);
 
         if (expr.isMoveInit()) {
-            if (!expr.getArgs()[0].getValue()->getType().isImplicitlyCopyable()) {
-                expr.getArgs()[0].getValue()->setMoved(true);
-            }
+            checkCanMove(*expr.getArgs()[0].getValue());
+            expr.getArgs()[0].getValue()->setMoved(true);
             return Type::getVoid();
         }
 
@@ -1173,6 +1175,7 @@ Type Typechecker::typecheckCallExpr(CallExpr& expr) {
 
     for (auto t : llvm::zip_first(params, expr.getArgs())) {
         if (!std::get<0>(t).getType().isImplicitlyCopyable()) {
+            checkCanMove(*std::get<1>(t).getValue());
             std::get<1>(t).getValue()->setMoved(true);
         }
     }

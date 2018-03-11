@@ -77,9 +77,11 @@ public:
     bool isConstant() const;
     // TODO: Use llvm::APSInt instead of int64_t.
     int64_t getConstantIntegerValue() const;
+    bool isLocalVariable() const;
     bool isLvalue() const;
     bool isRvalue() const { return !isLvalue(); }
     SourceLocation getLocation() const { return location; }
+    bool canDestructivelyMove() const;
     void setMoved(bool moved);
     std::unique_ptr<Expr> instantiate(const llvm::StringMap<Type>& genericArgs) const;
     std::vector<const Expr*> getSubExprs() const;

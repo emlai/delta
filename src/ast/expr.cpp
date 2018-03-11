@@ -127,6 +127,11 @@ int64_t Expr::getConstantIntegerValue() const {
     }
 }
 
+bool Expr::isLocalVariable() const {
+    auto* varExpr = llvm::dyn_cast<VarExpr>(this);
+    return varExpr && (varExpr->getDecl()->isParamDecl() || varExpr->getDecl()->isVarDecl());
+}
+
 bool Expr::isLvalue() const {
     switch (getKind()) {
         case ExprKind::VarExpr:
@@ -156,7 +161,13 @@ bool Expr::isLvalue() const {
     llvm_unreachable("all cases handled");
 }
 
+bool Expr::canDestructivelyMove() const {
+    return isLocalVariable() || isRvalue();
+}
+
 void Expr::setMoved(bool moved) {
+    if (getType().isImplicitlyCopyable()) return;
+
     if (auto* varExpr = llvm::dyn_cast<VarExpr>(this)) {
         switch (varExpr->getDecl()->getKind()) {
             case DeclKind::ParamDecl:
@@ -166,7 +177,7 @@ void Expr::setMoved(bool moved) {
                 llvm::cast<VarDecl>(varExpr->getDecl())->setMoved(moved);
                 break;
             default:
-                break;
+                ASSERT(!moved, "only local variables can be moved from");
         }
     }
 }

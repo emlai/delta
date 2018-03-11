@@ -103,6 +103,7 @@ private:
                       llvm::StringRef functionName = "", SourceLocation location = SourceLocation()) const;
     TypeDecl* getTypeDecl(const BasicType& type);
     void markFieldAsInitialized(Expr& expr);
+    void checkCanMove(Expr& expr);
     void checkReturnPointerToLocal(const ReturnStmt& stmt) const;
     static void checkHasAccess(const Decl& decl, SourceLocation location, AccessLevel userAccessLevel);
 

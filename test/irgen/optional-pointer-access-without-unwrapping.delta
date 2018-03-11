@@ -18,10 +18,8 @@ func main() {
     f.bar();
 
     // CHECK-NEXT: %f2 = load %Foo*, %Foo** %f
-    // CHECK-NEXT: %f3 = load %Foo*, %Foo** %f
-    // CHECK-NEXT: %3 = load %Foo, %Foo* %f3
-    // CHECK-NEXT: store %Foo %3, %Foo* %f2
-    *f = *f;
+    // CHECK-NEXT: store %Foo* %f2, %Foo** %ff
+    let ff: Foo* = *f
 
     // CHECK-NEXT: ret i32 0
 }

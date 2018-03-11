@@ -1,11 +1,10 @@
-struct LineIterator<Stream: InputStream>: Iterator<String> {
-
+struct LineIterator<Stream: InputStream>: Iterator<String*> {
     var stream: Stream*;
     var next: String;
 
     init(stream: Stream*) {
         this.stream = stream;
-        next = undefined;
+        next = String();
         increment();
     }
 
@@ -13,17 +12,15 @@ struct LineIterator<Stream: InputStream>: Iterator<String> {
         return !stream.isEof() || !next.isEmpty();
     }
 
-    func value() -> String {
+    func value() -> String* {
         return next;
     }
 
     mutating func increment() {
-        let next = stream.readLine();
-        this.next = next;
+        next = stream.readLine();
     }
 
-    func iterator() -> LineIterator<Stream> {
-        return *this;
+    func iterator() -> LineIterator<Stream>* {
+        return this;
     }
-
 }

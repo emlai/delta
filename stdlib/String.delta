@@ -32,6 +32,14 @@ struct String: Comparable, OutputStream, Printable {
         init(StringRef(cString, uint(strlen(cString))));
     }
 
+    private init(characters: Array<char>) {
+        this.characters = characters;
+    }
+
+    mutating func move() -> String {
+        return String(characters.move());
+    }
+
     func size() -> uint {
         return characters.size() - 1;
     }

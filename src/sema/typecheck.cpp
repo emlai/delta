@@ -86,7 +86,11 @@ void Typechecker::typecheckReturnStmt(ReturnStmt& stmt) {
 
     stmt.getReturnValue()->setType(convertedType ? convertedType : returnValueType);
     checkReturnPointerToLocal(stmt);
-    stmt.getReturnValue()->setMoved(true);
+
+    if (!functionReturnType.isImplicitlyCopyable()) {
+        checkCanMove(*stmt.getReturnValue());
+        stmt.getReturnValue()->setMoved(true);
+    }
 }
 
 void Typechecker::typecheckVarStmt(VarStmt& stmt) {
@@ -207,6 +211,17 @@ void Typechecker::markFieldAsInitialized(Expr& expr) {
             }
             default:
                 break;
+        }
+    }
+}
+
+void Typechecker::checkCanMove(Expr& expr) {
+    if (!expr.canDestructivelyMove()) {
+        if (auto* varExpr = llvm::dyn_cast<VarExpr>(&expr)) {
+            error(expr.getLocation(), "cannot destructively move from non-local variable '", varExpr->getIdentifier(),
+                  "'");
+        } else {
+            error(expr.getLocation(), "cannot destructively move from non-local non-temporary value");
         }
     }
 }
@@ -822,6 +837,7 @@ void Typechecker::typecheckVarDecl(VarDecl& decl, bool isGlobal) {
     }
 
     if (!decl.getType().isImplicitlyCopyable()) {
+        checkCanMove(*decl.getInitializer());
         decl.getInitializer()->setMoved(true);
     }
 }

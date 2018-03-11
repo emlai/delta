@@ -32,6 +32,16 @@ struct Array<Element> {
         }
     }
 
+    mutating func move() -> Array<Element> {
+        var moved = Array<Element>();
+        moved.bufferPointer = bufferPointer;
+        moved.size = size;
+        moved.capacity = capacity;
+        size = 0;
+        capacity = 0;
+        return moved;
+    }
+
     /// Returns the number of elements in the array.
     func size() -> uint {
         return size;
@@ -107,7 +117,7 @@ struct Array<Element> {
             for (let index in 0..size) {
                 let source = bufferPointer + index;
                 let target = newBufferPointer + index;
-                target.init(*source);
+                target.init(*source); // TODO: ???
             }
 
             if (capacity != 0) {
