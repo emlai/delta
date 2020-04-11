@@ -461,18 +461,19 @@ Type Typechecker::isImplicitlyConvertible(const Expr* expr, Type source, Type ta
             }
         }
 
-        // Auto-cast integer constants to parameter type if within range, error out if not within range.
+        // Auto-cast integer constants to target type if within range, error out if not within range.
         if ((expr->getType().isInteger() || expr->getType().isChar() || expr->getType().isEnumType()) && expr->isConstant()) {
             const auto& value = expr->getConstantIntegerValue();
+            auto adjustedTarget = allowPointerToTemporary ? target.removePointer() : target; // Convert e.g. int literal to uint when comparing to uint*.
 
-            if (target.isInteger()) {
-                checkRange(*expr, value, target);
-                return target;
+            if (adjustedTarget.isInteger()) {
+                checkRange(*expr, value, adjustedTarget);
+                return adjustedTarget;
             }
 
-            if (target.isFloatingPoint()) {
+            if (adjustedTarget.isFloatingPoint()) {
                 // TODO: Check that the integer value is losslessly convertible to the target type?
-                return target;
+                return adjustedTarget;
             }
         }
 

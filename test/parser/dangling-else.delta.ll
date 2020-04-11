@@ -8,7 +8,7 @@ if.then:                                          ; preds = %0
 if.else:                                          ; preds = %0
   br label %if.end
 
-if.end:                                           ; preds = %if.else, %if.end3
+if.end:                                           ; preds = %if.else
   ret i32 2
 
 if.then1:                                         ; preds = %if.then
@@ -16,7 +16,4 @@ if.then1:                                         ; preds = %if.then
 
 if.else2:                                         ; preds = %if.then
   ret i32 0
-
-if.end3:                                          ; No predecessors!
-  br label %if.end
 }

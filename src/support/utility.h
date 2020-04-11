@@ -15,9 +15,11 @@
 
 #ifndef NDEBUG
 #define ASSERT(condition, ...) assert(condition)
+#define ASSERT_EQUAL(a, b) if (!((a) == (b))) { llvm::errs() << "ASSERTION FAILED: " << #a << " == " << #b << " at " << __FILE__ << ":" << __LINE__ << '\n'; DEBUG_PRINT(a); DEBUG_PRINT(b); }
 #else
-// Prevent unused variable warnings without evaluating the condition value:
+// Prevent unused variable warnings without evaluating the condition values.
 #define ASSERT(condition, ...) ((void) sizeof(condition))
+#define ASSERT_EQUAL(a, b) ((void) sizeof(a)); ((void) sizeof(b))
 #endif
 
 namespace delta {
@@ -42,7 +44,7 @@ std::vector<T> instantiate(llvm::ArrayRef<T> elements, const llvm::StringMap<Typ
 }
 
 #define NOTNULL(x) (ASSERT(x), x)
-#define DEBUG_PRINT(x) llvm::outs() << #x << " = " << (x) << '\n'
+#define DEBUG_PRINT(x) llvm::errs() << #x << " = " << (x) << '\n'
 
 class StringFormatter : public llvm::raw_string_ostream {
 public:

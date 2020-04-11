@@ -1,0 +1,14 @@
+// RUN: check_matches_snapshot %delta -print-ir %s
+
+struct S<T> {
+    T*? e;
+}
+
+enum E {
+    A(S<E> s),
+    B(int[12] b),
+}
+
+void main() {
+    E e = E.A(S<E>(E.A(S<E>(null))));
+}

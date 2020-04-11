@@ -162,5 +162,6 @@ inline Token::Kind withoutCompoundEqSuffix(Token::Kind tokenKind) {
 
 const char* toString(Token::Kind tokenKind);
 std::ostream& operator<<(std::ostream& stream, Token::Kind tokenKind);
+llvm::raw_ostream& operator<<(llvm::raw_ostream& stream, Token::Kind tokenKind);
 
 } // namespace delta

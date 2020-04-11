@@ -334,3 +334,7 @@ const char* delta::toString(Token::Kind tokenKind) {
 std::ostream& delta::operator<<(std::ostream& stream, Token::Kind tokenKind) {
     return stream << toString(tokenKind);
 }
+
+llvm::raw_ostream& delta::operator<<(llvm::raw_ostream& stream, Token::Kind tokenKind) {
+    return stream << toString(tokenKind);
+}

@@ -1,7 +1,0 @@
-// RUN: %not %delta -print-ir %s | %FileCheck %s
-// TODO: Make this test pass with -typecheck in place of -print-ir.
-
-void main() {
-    // CHECK: [[@LINE+1]]:18: error: conversion from 'int' to 'bool' not supported
-    var b = bool(1);
-}

@@ -1,0 +1,12 @@
+// RUN: check_matches_snapshot %delta -print-ir %s -Wno-unused
+// XFAIL: *
+// TODO: XFAIL because the feature being tested will be removed soon anyway.
+
+extern void f(int* i);
+
+void a(int* p)
+{
+    var q = p;
+    f(&q);
+    f(&p);
+}

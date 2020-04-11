@@ -23,7 +23,7 @@ if(MSVC)
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /incremental /DEBUG:FASTLINK")
     endif()
 else()
-    set(CMAKE_CXX_FLAGS "-fno-rtti -fvisibility-inlines-hidden -Wall -Wextra -Wno-unknown-pragmas ${CMAKE_CXX_FLAGS}")
+    set(CMAKE_CXX_FLAGS "-fno-rtti -fvisibility-inlines-hidden -Wall -Wextra -Wno-unknown-pragmas -Wno-missing-braces ${CMAKE_CXX_FLAGS}")
 
     foreach(flag_var CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "-DNDEBUG" "" ${flag_var} "${${flag_var}}")
@@ -62,8 +62,8 @@ add_definitions(-DCLANG_BUILTIN_INCLUDE_PATH="${CLANG_CMAKE_DIR}/../../clang/${L
 
 enable_testing()
 
-file(GLOB DELTA_SOURCES src/ast/*.h src/ast/*.cpp src/driver/*.h src/driver/*.cpp src/irgen/*.h src/irgen/*.cpp src/package-manager/*.h
-    src/package-manager/*.cpp src/parser/*.h src/parser/*.cpp src/sema/*.h src/sema/*.cpp src/support/*.h src/support/*.cpp)
+file(GLOB DELTA_SOURCES src/ast/*.h src/ast/*.cpp src/driver/*.h src/driver/*.cpp src/ir/*.h src/ir/*.cpp src/llvm/*.h src/llvm/*.cpp
+    src/package-manager/*.h src/package-manager/*.cpp src/parser/*.h src/parser/*.cpp src/sema/*.h src/sema/*.cpp src/support/*.h src/support/*.cpp)
 add_executable(delta ${DELTA_SOURCES})
 
 llvm_map_components_to_libnames(LLVM_LIBS core native linker support)
