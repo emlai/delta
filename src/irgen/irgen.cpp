@@ -323,18 +323,14 @@ llvm::Module& IRGenerator::codegenModule(const Module& sourceModule) {
         }
     }
 
-    while (true) {
-        auto currentFunctionInstantiations = functionInstantiations;
+    for (size_t i = 0; i < functionInstantiations.size(); ++i) {
+        auto& instantiation = functionInstantiations[i];
 
-        for (auto& instantiation : currentFunctionInstantiations) {
-            if (instantiation.decl->isExtern() || !instantiation.function->empty()) continue;
-
+        if (!instantiation.decl->isExtern() && instantiation.function->empty()) {
             currentDecl = instantiation.decl;
             codegenFunctionBody(*instantiation.decl, *instantiation.function);
             ASSERT(!llvm::verifyFunction(*instantiation.function, &llvm::errs()));
         }
-
-        if (functionInstantiations.size() == currentFunctionInstantiations.size()) break;
     }
 
     ASSERT(!llvm::verifyModule(*module, &llvm::errs()));
