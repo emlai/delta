@@ -7,7 +7,7 @@
 using namespace delta;
 
 // TODO(ir): Rename IRxxxInst to simply xxxInst, for consistency with xxxDecl, xxxStmt, and xxxExpr.
-// TODO(ir): RUN: check_matches_ir %delta -print-il %s
+// TODO(ir): add check_matches_ir?
 
 IRBasicBlock::IRBasicBlock(std::string name, delta::IRFunction* parent) : IRValue{ValueKind::IRBasicBlock}, name(std::move(name)), parent(parent) {
     if (parent) {
@@ -20,7 +20,7 @@ static std::unordered_map<TypeBase*, IRType*> irTypes = {{nullptr, nullptr}};
 
 // TODO(ir) remove toplevel param?
 // TODO(ir) check this is consistent with old version of getLLVMType
-IRType* delta::getILType(Type astType, bool toplevel) {
+IRType* delta::getILType(Type astType) {
     auto it = irTypes.find(astType.getBase());
     if (it != irTypes.end()) return it->second;
 
@@ -90,44 +90,6 @@ IRType* delta::getILType(Type astType, bool toplevel) {
             llvm_unreachable("cannot convert unresolved type to IR");
     }
 
-    //    if (!astType) return IRType(astType);
-    //
-    //    // TODO(ir) doesn't work  for T*
-    //    if (toplevel) {
-    //        if (astType.isFunctionType()) {
-    //            return IRType(astType.getPointerTo());
-    //        }
-    //    }
-    //
-    //    if (astType.isArrayWithUnknownSize()) {
-    //        return IRType(getILType(astType.getElementType(), false).getPointerTo());
-    //    }
-    //
-    //    if (astType.isArrayWithRuntimeSize()) {
-    //        return IRType(BasicType::get("ArrayRef", getILType(astType.getElementType())));
-    //    }
-    //
-    //    // TODO(ir): add isConst()
-    //    if (!astType.isMutable()) {
-    //        return IRType(getILType(astType.withMutability(Mutability::Mutable), false));
-    //    }
-    //
-    //    if (astType.isPointerType()) {
-    //        return IRType(getILType(astType.getPointee(), false).getPointerTo());
-    //    }
-    //
-    //    if (astType.isOptionalType() && astType.getWrappedType().isPointerTypeInLLVM()) {
-    //        return IRType(getILType(astType.getWrappedType(), false));
-    //    }
-    //
-    //    if (astType.isEnumType()) {
-    //        auto enumDecl = llvm::cast<EnumDecl>(astType.getDecl());
-    //        if (!enumDecl->hasAssociatedValues()) {
-    //            return IRType(enumDecl->getTagType());
-    //        }
-    //        // TODO(ir): Handle enum with associated values?
-    //    }
-
     irTypes.emplace(astType.getBase(), irType);
     return irType;
 }
@@ -189,8 +151,6 @@ IRType* IRValue::getType() const {
                     return binary->left->getType();
             }
         }
-            // TODO(ir)
-            //            ASSERT(*llvm::cast<IRBinaryOp>(this)->left->getType() == *llvm::cast<IRBinaryOp>(this)->right->getType());
         case ValueKind::IRUnaryOp: {
             auto unary = llvm::cast<IRUnaryOp>(this);
             switch (unary->op) {
@@ -222,23 +182,11 @@ IRType* IRValue::getType() const {
             auto gep = llvm::cast<IRConstGEP>(this);
             auto baseType = gep->pointer->getType();
             switch (baseType->getPointee()->kind) {
-                case IRTypeKind::IRStructType:
-                case IRTypeKind::IRUnionType: {
-                    // TODO(ir) cleanup
-                    //                    DEBUG_PRINT(baseType);
-                    //                    DEBUG_PRINT(baseType.getPointeeInLLVM());
-
-                    ASSERT(gep->index1 < baseType->getPointee()->getFields().size());
-                    auto a = baseType->getPointee()->getFields()[gep->index1];
-                    ASSERT(a);
-                    baseType = a->getPointerTo();
+                case IRTypeKind::IRStructType: {
+                    ASSERT(gep->index1 < (int) baseType->getPointee()->getFields().size());
+                    baseType = baseType->getPointee()->getFields()[gep->index1]->getPointerTo();
                     break;
                 }
-                    //                case IRTypeKind::IRUnionType:
-                    //                    auto a = baseType->getPointee()->getFields()[gep->index1];
-                    //                    ASSERT(a);
-                    //                    baseType = a->getPointerTo();
-                    //                    break;
                 case IRTypeKind::IRArrayType:
                     // TODO(ir) do we gep arrays?
                     baseType = baseType->getPointee()->getElementType()->getPointerTo();
@@ -246,6 +194,7 @@ IRType* IRValue::getType() const {
                 case IRTypeKind::IRBasicType:
                 case IRTypeKind::IRFunctionType:
                 case IRTypeKind::IRPointerType:
+                case IRTypeKind::IRUnionType: // TODO(ir) does union belong to same branch as struct?
                     llvm_unreachable("invalid const GEP target type");
             }
             return baseType;
@@ -261,7 +210,8 @@ IRType* IRValue::getType() const {
         case ValueKind::IRFunction: {
             auto function = llvm::cast<IRFunction>(this);
             auto paramTypes = map(function->params, [](auto& p) { return p.type; });
-            return (new IRFunctionType{IRTypeKind::IRFunctionType, function->returnType, std::move(paramTypes)})->getPointerTo(); // TODO(ir) cache?
+            return (new IRFunctionType{IRTypeKind::IRFunctionType, function->returnType, std::move(paramTypes)})->getPointerTo();
+            // TODO(ir) cache?
         }
         case ValueKind::IRParam:
             return llvm::cast<IRParam>(this)->type;
@@ -286,7 +236,6 @@ IRType* IRValue::getType() const {
     llvm_unreachable("unhandled instruction kind");
 }
 
-// TODO(ir): Check empty strings
 std::string IRValue::getName() const {
     switch (kind) {
         case ValueKind::IRInstruction:

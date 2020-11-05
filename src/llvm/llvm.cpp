@@ -12,25 +12,6 @@ using namespace delta;
 // TODO(ir) rename llvm directory to "codegen" or "backend"? so all backends can be put there?
 //  OR put llvm.cpp/h under ir/ and rename ir/ to "codegen" or "backend"?
 
-LLVMGenerator::LLVMGenerator() : builder(ctx) {
-    scopes.push_back(LLVMGenScope(*this));
-}
-
-void LLVMGenerator::setLocalValue(llvm::Value* value, const IRValue* decl) {
-    auto it = scopes.back().valuesByDecl.try_emplace(decl, value);
-    ASSERT(it.second);
-}
-
-llvm::Value* LLVMGenerator::getValueOrNull(const IRValue* decl) {
-    for (auto& scope : llvm::reverse(scopes)) {
-        if (auto* value = scope.valuesByDecl.lookup(decl)) {
-            return value;
-        }
-    }
-
-    return nullptr;
-}
-
 llvm::Type* LLVMGenerator::getBuiltinType(llvm::StringRef name) {
     return llvm::StringSwitch<llvm::Type*>(name)
         .Case("void", llvm::Type::getVoidTy(ctx))
@@ -150,7 +131,7 @@ void LLVMGenerator::codegenFunctionBody(const IRFunction& decl, llvm::Function& 
 
     auto arg = function.arg_begin();
     for (auto& param : decl.params) {
-        setLocalValue(&*arg++, &param);
+        generatedValues.emplace(&param, &*arg++);
     }
 
     for (auto* block : decl.body) {
@@ -469,10 +450,9 @@ llvm::Value* LLVMGenerator::codegenExprUncached(const IRValue* instruction) {
             auto inst = llvm::cast<IRFunction>(instruction);
             return getFunctionProto(*inst);
         }
-        case ValueKind::IRParam: {
-            auto inst = llvm::cast<IRParam>(instruction);
-            return getValueOrNull(inst); // TODO(ir) params are only thing that uses getValueOrNull. Find a way to get rid of it?
-        }
+        case ValueKind::IRParam:
+            return generatedValues.at(instruction);
+
         case ValueKind::IRGlobalVariable: {
             auto inst = llvm::cast<IRGlobalVariable>(instruction);
             // TODO(ir): Match previous global constant inlining behavior.

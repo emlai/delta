@@ -95,7 +95,7 @@ struct IRUnionType : IRType {
     static bool classof(const IRType* t) { return t->kind == IRTypeKind::IRUnionType; }
 };
 
-IRType* getILType(Type astType, bool toplevel = true);
+IRType* getILType(Type astType);
 llvm::raw_ostream& operator<<(llvm::raw_ostream& stream, IRType* type);
 
 // TODO(ir): Rename IRGenerator to IRBuilder? And LLVMGenerator to LLVMBuilder?
@@ -136,6 +136,7 @@ enum class ValueKind {
 struct IRValue {
     IRType* getType() const;
     std::string getName() const;
+    bool isTerminator() const { return kind == ValueKind::IRReturnInst || kind == ValueKind::IRBranchInst || kind == ValueKind::IRConditionalBranchInst; }
     void print(llvm::raw_ostream& stream) const;
 
     ValueKind kind;
@@ -180,7 +181,6 @@ struct IRPhiInst : IRInstruction {
     static bool classof(const IRValue* e) { return e->kind == ValueKind::IRPhiInst; }
 };
 
-// TODO(ir) Rename to Match so variable names are more beautiful?
 struct IRSwitchInst : IRInstruction {
     IRValue* condition;
     IRBasicBlock* defaultBlock;

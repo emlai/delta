@@ -21,16 +21,9 @@ class Decl;
 class EnumDecl;
 class FunctionDecl;
 
-struct LLVMGenScope {
-    LLVMGenScope(LLVMGenerator& llvmGenerator) : llvmGenerator(&llvmGenerator) {}
-
-    llvm::DenseMap<const IRValue*, llvm::Value*> valuesByDecl; // TODO(ir): Rename "decl".
-    LLVMGenerator* llvmGenerator;
-};
-
 class LLVMGenerator {
 public:
-    LLVMGenerator();
+    LLVMGenerator() : builder(ctx) {}
     llvm::Module& codegenModule(const IRModule& sourceModule);
     llvm::LLVMContext& getLLVMContext() { return ctx; }
     std::vector<llvm::Module*> getGeneratedModules() { return std::move(generatedModules); }
@@ -47,8 +40,6 @@ private:
     friend struct LLVMGenScope;
 
     void codegenFunctionBody(const IRFunction& decl, llvm::Function& function);
-    void setLocalValue(llvm::Value* value, const IRValue* decl);
-    llvm::Value* getValueOrNull(const IRValue* decl);
     llvm::Type* getLLVMType(IRType* type, SourceLocation location = SourceLocation());
     llvm::Type* getBuiltinType(llvm::StringRef name);
     llvm::Type* getStructType(IRStructType* type);
@@ -60,7 +51,6 @@ private:
         llvm::Function* function;
     };
 
-    std::vector<LLVMGenScope> scopes;
     llvm::LLVMContext ctx;
     llvm::IRBuilder<> builder;
     llvm::Module* module = nullptr;

@@ -46,8 +46,7 @@ void IRGenerator::emitBlock(llvm::ArrayRef<Stmt*> stmts, IRBasicBlock* continuat
 
     endScope();
 
-    if (insertBlock->insts.empty() || (insertBlock->insts.back()->kind != ValueKind::IRReturnInst && insertBlock->insts.back()->kind != ValueKind::IRBranchInst &&
-                                       insertBlock->insts.back()->kind != ValueKind::IRConditionalBranchInst)) {
+    if (insertBlock->insts.empty() || !insertBlock->insts.back()->isTerminator()) {
         createBr(continuation);
     }
 }
