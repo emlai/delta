@@ -77,7 +77,7 @@ void IRGenerator::emitFunctionBody(const FunctionDecl& decl, Function& function)
 void IRGenerator::emitFunctionDecl(const FunctionDecl& decl) {
     auto function = getFunctionProto(decl);
 
-    if (!decl.isExtern() && function->body.empty() && decl.hasBody()) { // TODO(ir): Should hasBody check be here?
+    if (!decl.isExtern() && function->body.empty()) {
         emitFunctionBody(decl, *function);
     }
 }

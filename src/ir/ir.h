@@ -101,7 +101,6 @@ llvm::raw_ostream& operator<<(llvm::raw_ostream& stream, IRType* type);
 // TODO(ir): Rename IRGenerator to IRBuilder? And LLVMGenerator to LLVMBuilder?
 // TODO(ir): Reorder these and ensure names are consistent and simple.
 enum class ValueKind {
-    Instruction, // First instruction // TODO(ir): Remove, this is abstract.
     AllocaInst,
     ReturnInst,
     BranchInst,
@@ -119,7 +118,7 @@ enum class ValueKind {
     ConstGEPInst,
     CastInst,
     UnreachableInst,
-    SizeofInst, // Last instruction
+    SizeofInst,
     Block,
     Function,
     Parameter,
@@ -143,7 +142,7 @@ struct Value {
 };
 
 struct Instruction : Value {
-    static bool classof(const Value* v) { return v->kind >= ValueKind::Instruction && v->kind <= ValueKind::SizeofInst; }
+    static bool classof(const Value* v) { return v->kind >= ValueKind::AllocaInst && v->kind <= ValueKind::SizeofInst; }
 };
 
 struct AllocaInst : Instruction {
@@ -279,6 +278,7 @@ struct SizeofInst : Instruction {
     static bool classof(const Value* v) { return v->kind == ValueKind::SizeofInst; }
 };
 
+// TODO(ir) rename to BasicBlock?
 struct Block : Value {
     std::string name;
     Function* parent;

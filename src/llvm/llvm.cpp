@@ -215,13 +215,6 @@ llvm::Value* LLVMGenerator::codegenExpr(const Value* instruction) {
 // TODO(ir): refactor cases into functions
 llvm::Value* LLVMGenerator::codegenExprUncached(const Value* instruction) {
     switch (instruction->kind) {
-        // TODO(ir)
-        case ValueKind::Instruction: {
-            auto inst = llvm::cast<Instruction>(instruction);
-            llvm_unreachable("unhandled Instruction");
-            // TODO(ir): Instruction shouldn't be an Value/instruction because these are always unhandled?
-            return nullptr;
-        }
         case ValueKind::AllocaInst: {
             auto inst = llvm::cast<AllocaInst>(instruction);
             return builder.CreateAlloca(getLLVMType(inst->allocatedType), nullptr, inst->name);

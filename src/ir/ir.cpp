@@ -97,8 +97,6 @@ IRType* delta::getILType(Type astType) {
 // TODO(ir) store type in Value?
 IRType* Value::getType() const {
     switch (kind) {
-        case ValueKind::Instruction:
-            llvm_unreachable("unhandled Instruction");
         case ValueKind::AllocaInst:
             return llvm::cast<AllocaInst>(this)->allocatedType->getPointerTo();
         case ValueKind::ReturnInst:
@@ -238,8 +236,6 @@ IRType* Value::getType() const {
 
 std::string Value::getName() const {
     switch (kind) {
-        case ValueKind::Instruction:
-            llvm_unreachable("unhandled Instruction");
         case ValueKind::AllocaInst:
             return llvm::cast<AllocaInst>(this)->name;
         case ValueKind::ReturnInst:
@@ -353,8 +349,6 @@ void Value::print(llvm::raw_ostream& stream) const {
     const auto indent = "    ";
 
     switch (this->kind) {
-        case ValueKind::Instruction:
-            llvm_unreachable("unhandled Instruction");
         case ValueKind::AllocaInst: {
             auto alloca = llvm::cast<AllocaInst>(this);
             stream << indent << formatTypeAndName(alloca) << " = alloca " << alloca->allocatedType;
