@@ -7,7 +7,7 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 #pragma warning(pop)
-#include "../ir/ir.h"
+#include "../intermediate/ir.h"
 
 // TODO(ir): Rename "decl" to something else
 

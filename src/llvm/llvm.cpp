@@ -5,7 +5,7 @@
 #include <llvm/IR/Verifier.h>
 #pragma warning(pop)
 #include "../ast/decl.h"
-#include "../ir/ir.h"
+#include "../intermediate/ir.h"
 
 using namespace delta;
 

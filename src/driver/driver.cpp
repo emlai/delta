@@ -25,7 +25,7 @@
 #pragma warning(pop)
 #include "clang.h"
 #include "../ast/module.h"
-#include "../ir/irgen.h"
+#include "../intermediate/irgen.h"
 #include "../llvm/llvm.h"
 #include "../package-manager/manifest.h"
 #include "../package-manager/package-manager.h"

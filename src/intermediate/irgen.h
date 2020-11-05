@@ -8,7 +8,7 @@
 #include "../ast/decl.h"
 #include "../ast/expr.h"
 #include "../ast/stmt.h"
-#include "../ir/ir.h"
+#include "../intermediate/ir.h"
 #include "../sema/typecheck.h"
 
 // TODO(ir): Rename "IR" to "IL" or "Intermediate" or to avoid confusion with LLVM IR?
@@ -247,7 +247,7 @@ private:
     Value* createSizeof(Type type) { return new SizeofInst{ValueKind::SizeofInst, getILType(type), ""}; }
 
     SwitchInst* createSwitch(Value* condition, Block* defaultBlock) {
-        auto switchInst = new SwitchInst{ValueKind::SwitchInst, condition, defaultBlock};
+        auto switchInst = new SwitchInst{ValueKind::SwitchInst, condition, defaultBlock, {}};
         insertBlock->insts.push_back(switchInst);
         return switchInst;
     }

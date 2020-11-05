@@ -18,13 +18,13 @@ Block::Block(std::string name, delta::Function* parent) : Value{ValueKind::Block
 // TODO(ir) store these in irgenerator?
 static std::unordered_map<TypeBase*, IRType*> irTypes = {{nullptr, nullptr}};
 
-// TODO(ir) remove toplevel param?
+// TODO(ir) rename intermediate/ to ir/ or codegen/ or backend/?
 // TODO(ir) check this is consistent with old version of getLLVMType
 IRType* delta::getILType(Type astType) {
     auto it = irTypes.find(astType.getBase());
     if (it != irTypes.end()) return it->second;
 
-    IRType* irType;
+    IRType* irType = nullptr;
 
     switch (astType.getKind()) {
         case TypeKind::BasicType: {
@@ -161,7 +161,7 @@ IRType* Value::getType() const {
         case ValueKind::GEPInst: {
             auto gep = llvm::cast<GEPInst>(this);
             auto baseType = gep->pointer->getType();
-            for (auto index : llvm::ArrayRef(gep->indexes).drop_front()) {
+            for (auto _ : llvm::ArrayRef(gep->indexes).drop_front()) {
                 switch (baseType->getPointee()->kind) {
                     case IRTypeKind::IRArrayType:
                         baseType = baseType->getPointee()->getElementType()->getPointerTo();
