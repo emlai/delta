@@ -523,39 +523,39 @@ void IRModule::print(llvm::raw_ostream& stream) const {
 }
 
 bool IRType::isInteger() {
-    if (!isPrimitiveType()) return false;
+    if (!isBasicType()) return false;
     return llvm::StringSwitch<bool>(llvm::cast<IRBasicType>(this)->name)
         .Cases("int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64", true)
         .Default(false);
 }
 
 bool IRType::isSignedInteger() {
-    if (!isPrimitiveType()) return false;
+    if (!isBasicType()) return false;
     return llvm::StringSwitch<bool>(llvm::cast<IRBasicType>(this)->name).Cases("int", "int8", "int16", "int32", "int64", true).Default(false);
 }
 
 bool IRType::isUnsignedInteger() {
-    if (!isPrimitiveType()) return false;
+    if (!isBasicType()) return false;
     return llvm::StringSwitch<bool>(llvm::cast<IRBasicType>(this)->name).Cases("uint", "uint8", "uint16", "uint32", "uint64", true).Default(false);
 }
 
 bool IRType::isFloatingPoint() {
-    if (!isPrimitiveType()) return false;
+    if (!isBasicType()) return false;
     return llvm::StringSwitch<bool>(llvm::cast<IRBasicType>(this)->name).Cases("float", "float32", "float64", "float80", true).Default(false);
 }
 
 bool IRType::isChar() {
-    if (!isPrimitiveType()) return false;
+    if (!isBasicType()) return false;
     return llvm::cast<IRBasicType>(this)->name == "char";
 }
 
 bool IRType::isBool() {
-    if (!isPrimitiveType()) return false;
+    if (!isBasicType()) return false;
     return llvm::cast<IRBasicType>(this)->name == "bool";
 }
 
 bool IRType::isVoid() {
-    if (!isPrimitiveType()) return false;
+    if (!isBasicType()) return false;
     return llvm::cast<IRBasicType>(this)->name == "void";
 }
 
@@ -569,7 +569,7 @@ llvm::ArrayRef<IRType*> IRType::getFields() { // TODO(ir) rename to fieldtypes
 }
 
 llvm::StringRef IRType::getName() {
-    if (isPrimitiveType()) return llvm::cast<IRBasicType>(this)->name;
+    if (isBasicType()) return llvm::cast<IRBasicType>(this)->name;
     if (isUnion()) return llvm::cast<IRUnionType>(this)->name;
     return llvm::cast<IRStructType>(this)->name;
 }
@@ -645,7 +645,7 @@ llvm::raw_ostream& delta::operator<<(llvm::raw_ostream& stream, IRType* type) {
 bool IRType::equals(IRType* other) {
     switch (kind) {
         case IRTypeKind::IRBasicType:
-            return other->isPrimitiveType() && getName() == other->getName();
+            return other->isBasicType() && getName() == other->getName();
 
         case IRTypeKind::IRPointerType:
             return other->isPointerType() && getPointee()->equals(other->getPointee());

@@ -31,7 +31,7 @@ enum class IRTypeKind {
 struct IRType {
     IRTypeKind kind;
 
-    bool isPrimitiveType() { return kind == IRTypeKind::IRBasicType; } // TODO(ir) rename
+    bool isBasicType() { return kind == IRTypeKind::IRBasicType; } // TODO(ir) rename
     bool isPointerType() { return kind == IRTypeKind::IRPointerType; }
     bool isFunctionType() { return kind == IRTypeKind::IRFunctionType; }
     bool isArrayType() { return kind == IRTypeKind::IRArrayType; }
@@ -56,7 +56,7 @@ struct IRType {
 };
 
 struct IRBasicType : IRType {
-    std::string name; // TODO(ir)
+    std::string name;
 
     static bool classof(const IRType* t) { return t->kind == IRTypeKind::IRBasicType; }
 };
@@ -143,27 +143,26 @@ struct Value {
 };
 
 struct Instruction : Value {
-    // TODO(ir) rename "e" in classof functions
-    static bool classof(const Value* e) { return e->kind >= ValueKind::Instruction && e->kind <= ValueKind::SizeofInst; }
+    static bool classof(const Value* v) { return v->kind >= ValueKind::Instruction && v->kind <= ValueKind::SizeofInst; }
 };
 
 struct AllocaInst : Instruction {
     IRType* allocatedType;
     std::string name;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::AllocaInst; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::AllocaInst; }
 };
 
 struct ReturnInst : Instruction {
     Value* value;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::ReturnInst; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::ReturnInst; }
 };
 
 struct BranchInst : Instruction {
     Block* destination;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::BranchInst; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::BranchInst; }
 };
 
 struct CondBranchInst : Instruction {
@@ -171,14 +170,14 @@ struct CondBranchInst : Instruction {
     Block* trueBlock;
     Block* falseBlock;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::CondBranchInst; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::CondBranchInst; }
 };
 
 struct PhiInst : Instruction {
     std::vector<std::pair<Value*, Block*>> valuesAndPredecessors;
     std::string name;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::PhiInst; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::PhiInst; }
 };
 
 struct SwitchInst : Instruction {
@@ -186,21 +185,21 @@ struct SwitchInst : Instruction {
     Block* defaultBlock;
     std::vector<std::pair<Value*, Block*>> cases;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::SwitchInst; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::SwitchInst; }
 };
 
 struct LoadInst : Instruction {
     Value* value;
     std::string name;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::LoadInst; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::LoadInst; }
 };
 
 struct StoreInst : Instruction {
     Value* value;
     Value* pointer;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::StoreInst; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::StoreInst; }
 };
 
 struct InsertInst : Instruction {
@@ -209,7 +208,7 @@ struct InsertInst : Instruction {
     int index;
     std::string name;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::InsertInst; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::InsertInst; }
 };
 
 struct ExtractInst : Instruction {
@@ -217,7 +216,7 @@ struct ExtractInst : Instruction {
     int index;
     std::string name;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::ExtractInst; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::ExtractInst; }
 };
 
 struct CallInst : Instruction {
@@ -225,7 +224,7 @@ struct CallInst : Instruction {
     std::vector<Value*> args;
     std::string name;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::CallInst; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::CallInst; }
 };
 
 struct BinaryInst : Instruction {
@@ -234,7 +233,7 @@ struct BinaryInst : Instruction {
     Value* right;
     std::string name;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::BinaryInst; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::BinaryInst; }
 };
 
 struct UnaryInst : Instruction {
@@ -242,7 +241,7 @@ struct UnaryInst : Instruction {
     Value* operand;
     std::string name;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::UnaryInst; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::UnaryInst; }
 };
 
 struct GEPInst : Instruction {
@@ -250,7 +249,7 @@ struct GEPInst : Instruction {
     std::vector<Value*> indexes;
     std::string name;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::GEPInst; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::GEPInst; }
 };
 
 struct ConstGEPInst : Instruction {
@@ -258,7 +257,7 @@ struct ConstGEPInst : Instruction {
     int index0, index1;
     std::string name;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::ConstGEPInst; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::ConstGEPInst; }
 };
 
 struct CastInst : Instruction {
@@ -266,35 +265,34 @@ struct CastInst : Instruction {
     IRType* type;
     std::string name;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::CastInst; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::CastInst; }
 };
 
 struct UnreachableInst : Instruction {
-    static bool classof(const Value* e) { return e->kind == ValueKind::UnreachableInst; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::UnreachableInst; }
 };
 
 struct SizeofInst : Instruction {
     IRType* type;
     std::string name;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::SizeofInst; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::SizeofInst; }
 };
 
-// TODO(ir): Rename to simply Block?
 struct Block : Value {
     std::string name;
     Function* parent;
     std::vector<Instruction*> insts;
 
     Block(std::string name, Function* parent = nullptr);
-    static bool classof(const Value* e) { return e->kind == ValueKind::Block; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::Block; }
 };
 
 struct Parameter : Value {
     IRType* type;
     std::string name;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::Parameter; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::Parameter; }
 };
 
 struct Function : Value {
@@ -305,54 +303,53 @@ struct Function : Value {
     bool isExtern;
     bool isVariadic;
     SourceLocation location;
-    int nameCounter = 0; // TODO(ir) cleanup, merge with IRGenerator::nameCounter?
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::Function; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::Function; }
 };
 
 struct GlobalVariable : Value {
     Value* value;
     std::string name;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::GlobalVariable; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::GlobalVariable; }
 };
 
 struct ConstantString : Value {
     std::string value;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::ConstantString; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::ConstantString; }
 };
 
 struct ConstantInt : Value {
     IRType* type;
     llvm::APSInt value;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::ConstantInt; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::ConstantInt; }
 };
 
 struct ConstantFP : Value {
     IRType* type;
     llvm::APFloat value;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::ConstantFP; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::ConstantFP; }
 };
 
 struct ConstantBool : Value {
     bool value;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::ConstantBool; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::ConstantBool; }
 };
 
 struct ConstantNull : Value {
     IRType* type;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::ConstantNull; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::ConstantNull; }
 };
 
 struct Undefined : Value {
     IRType* type;
 
-    static bool classof(const Value* e) { return e->kind == ValueKind::Undefined; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::Undefined; }
 };
 
 struct IRModule {
@@ -361,7 +358,7 @@ struct IRModule {
     std::vector<GlobalVariable*> globalVariables;
 
     void print(llvm::raw_ostream& stream) const;
-    static bool classof(const Value* e) { return e->kind == ValueKind::IRModule; }
+    static bool classof(const Value* v) { return v->kind == ValueKind::IRModule; }
 };
 
 } // namespace delta
