@@ -36,7 +36,7 @@ void IRGenerator::emitVarStmt(const VarStmt& stmt) {
     }
 }
 
-void IRGenerator::emitBlock(llvm::ArrayRef<Stmt*> stmts, IRBasicBlock* continuation) {
+void IRGenerator::emitBlock(llvm::ArrayRef<Stmt*> stmts, Block* continuation) {
     beginScope();
 
     for (const auto& stmt : stmts) {
@@ -62,9 +62,9 @@ void IRGenerator::emitIfStmt(const IfStmt& ifStmt) {
     }
 
     auto* function = insertBlock->parent;
-    auto* thenBlock = new IRBasicBlock("if.then", function);
-    auto* elseBlock = new IRBasicBlock("if.else", function);
-    auto* endIfBlock = new IRBasicBlock("if.end", function);
+    auto* thenBlock = new Block("if.then", function);
+    auto* elseBlock = new Block("if.else", function);
+    auto* endIfBlock = new Block("if.end", function);
     createCondBr(condition, thenBlock, elseBlock);
 
     setInsertPoint(thenBlock);
@@ -77,8 +77,8 @@ void IRGenerator::emitIfStmt(const IfStmt& ifStmt) {
 }
 
 void IRGenerator::emitSwitchStmt(const SwitchStmt& switchStmt) {
-    IRValue* enumValue = nullptr;
-    IRValue* condition = emitExprOrEnumTag(switchStmt.getCondition(), &enumValue);
+    Value* enumValue = nullptr;
+    Value* condition = emitExprOrEnumTag(switchStmt.getCondition(), &enumValue);
 
     auto* function = insertBlock->parent;
     auto* insertBlockBackup = insertBlock;
@@ -86,13 +86,13 @@ void IRGenerator::emitSwitchStmt(const SwitchStmt& switchStmt) {
 
     auto cases = map(switchStmt.getCases(), [&](const SwitchCase& switchCase) {
         auto* value = emitExprOrEnumTag(*switchCase.getValue(), nullptr);
-        auto* block = new IRBasicBlock("switch.case." + std::to_string(caseIndex++), function);
+        auto* block = new Block("switch.case." + std::to_string(caseIndex++), function);
         return std::make_pair(value, block);
     });
 
     setInsertPoint(insertBlockBackup);
-    auto* defaultBlock = new IRBasicBlock("switch.default", function);
-    auto* end = new IRBasicBlock("switch.end", function);
+    auto* defaultBlock = new Block("switch.default", function);
+    auto* end = new Block("switch.end", function);
     breakTargets.push_back(end);
     auto* switchInst = createSwitch(condition, defaultBlock);
 
@@ -127,10 +127,10 @@ void IRGenerator::emitForStmt(const ForStmt& forStmt) {
 
     auto* increment = forStmt.getIncrement();
     auto* function = insertBlock->parent;
-    auto* condition = new IRBasicBlock("loop.condition", function);
-    auto* body = new IRBasicBlock("loop.body", function);
-    auto* afterBody = increment ? new IRBasicBlock("loop.increment", function) : condition;
-    auto* end = new IRBasicBlock("loop.end", function);
+    auto* condition = new Block("loop.condition", function);
+    auto* body = new Block("loop.body", function);
+    auto* afterBody = increment ? new Block("loop.increment", function) : condition;
+    auto* end = new Block("loop.end", function);
 
     breakTargets.push_back(end);
     continueTargets.push_back(afterBody);

@@ -7,15 +7,15 @@
 
 using namespace delta;
 
-IRValue* IRGenerator::emitVarExpr(const VarExpr& expr) {
+Value* IRGenerator::emitVarExpr(const VarExpr& expr) {
     return getValue(expr.getDecl());
 }
 
-IRValue* IRGenerator::emitStringLiteralExpr(const StringLiteralExpr& expr) {
+Value* IRGenerator::emitStringLiteralExpr(const StringLiteralExpr& expr) {
     auto* stringPtr = createGlobalStringPtr(expr.getValue());
     auto* size = createConstantInt(Type::getInt(), expr.getValue().size());
     auto* alloca = createEntryBlockAlloca(BasicType::get("string", {}), "__str");
-    IRFunction* stringConstructor = nullptr;
+    Function* stringConstructor = nullptr;
 
     for (auto* decl : Module::getStdlibModule()->getSymbolTable().find("string.init")) {
         auto params = llvm::cast<ConstructorDecl>(decl)->getParams();
@@ -30,11 +30,11 @@ IRValue* IRGenerator::emitStringLiteralExpr(const StringLiteralExpr& expr) {
     return alloca;
 }
 
-IRValue* IRGenerator::emitCharacterLiteralExpr(const CharacterLiteralExpr& expr) {
+Value* IRGenerator::emitCharacterLiteralExpr(const CharacterLiteralExpr& expr) {
     return createConstantInt(getILType(expr.getType()), expr.getValue());
 }
 
-IRValue* IRGenerator::emitIntLiteralExpr(const IntLiteralExpr& expr) {
+Value* IRGenerator::emitIntLiteralExpr(const IntLiteralExpr& expr) {
     // Integer literals may be typed as floating-point when used in a context
     // that requires a floating-point value. It might make sense to combine
     // IntLiteralExpr and FloatLiteralExpr into a single class.
@@ -45,15 +45,15 @@ IRValue* IRGenerator::emitIntLiteralExpr(const IntLiteralExpr& expr) {
     return createConstantInt(expr.getType(), expr.getValue().getExtValue());
 }
 
-IRValue* IRGenerator::emitFloatLiteralExpr(const FloatLiteralExpr& expr) {
+Value* IRGenerator::emitFloatLiteralExpr(const FloatLiteralExpr& expr) {
     return createConstantFP(expr.getType(), expr.getValue());
 }
 
-IRValue* IRGenerator::emitBoolLiteralExpr(const BoolLiteralExpr& expr) {
+Value* IRGenerator::emitBoolLiteralExpr(const BoolLiteralExpr& expr) {
     return createConstantBool(expr.getValue());
 }
 
-IRValue* IRGenerator::emitNullLiteralExpr(const NullLiteralExpr& expr) {
+Value* IRGenerator::emitNullLiteralExpr(const NullLiteralExpr& expr) {
     if (expr.getType().isPointerTypeInLLVM()) {
         return createConstantNull(expr.getType());
     } else {
@@ -61,11 +61,11 @@ IRValue* IRGenerator::emitNullLiteralExpr(const NullLiteralExpr& expr) {
     }
 }
 
-IRValue* IRGenerator::emitOptionalConstruction(Type wrappedType, IRValue* arg) {
+Value* IRGenerator::emitOptionalConstruction(Type wrappedType, Value* arg) {
     auto* decl = Module::getStdlibModule()->getSymbolTable().findOne("Optional");
     auto typeTemplate = llvm::cast<TypeTemplate>(decl);
     auto typeDecl = typeTemplate->instantiate(wrappedType);
-    IRFunction* optionalConstructor = nullptr;
+    Function* optionalConstructor = nullptr;
 
     for (auto* constructor : typeDecl->getConstructors()) {
         if (constructor->getParams().size() == (arg ? 1 : 0)) {
@@ -76,19 +76,19 @@ IRValue* IRGenerator::emitOptionalConstruction(Type wrappedType, IRValue* arg) {
 
     ASSERT(optionalConstructor);
     auto* alloca = createEntryBlockAlloca(typeDecl->getType());
-    llvm::SmallVector<IRValue*, 2> args;
+    llvm::SmallVector<Value*, 2> args;
     args.push_back(alloca);
     if (arg) args.push_back(arg);
     createCall(optionalConstructor, args);
     return alloca;
 }
 
-IRValue* IRGenerator::emitUndefinedLiteralExpr(const UndefinedLiteralExpr& expr) {
+Value* IRGenerator::emitUndefinedLiteralExpr(const UndefinedLiteralExpr& expr) {
     return createUndefined(expr.getType());
 }
 
-IRValue* IRGenerator::emitArrayLiteralExpr(const ArrayLiteralExpr& expr) {
-    IRValue* array = createUndefined(expr.getType());
+Value* IRGenerator::emitArrayLiteralExpr(const ArrayLiteralExpr& expr) {
+    Value* array = createUndefined(expr.getType());
     auto index = 0;
 
     for (auto& element : expr.getElements()) {
@@ -99,8 +99,8 @@ IRValue* IRGenerator::emitArrayLiteralExpr(const ArrayLiteralExpr& expr) {
     return array;
 }
 
-IRValue* IRGenerator::emitTupleExpr(const TupleExpr& expr) {
-    IRValue* tuple = createUndefined(expr.getType());
+Value* IRGenerator::emitTupleExpr(const TupleExpr& expr) {
+    Value* tuple = createUndefined(expr.getType());
     unsigned index = 0;
     for (auto& element : expr.getElements()) {
         tuple = createInsertValue(tuple, emitExpr(*element.getValue()), index++);
@@ -108,11 +108,11 @@ IRValue* IRGenerator::emitTupleExpr(const TupleExpr& expr) {
     return tuple;
 }
 
-IRValue* IRGenerator::emitImplicitNullComparison(IRValue* operand) {
+Value* IRGenerator::emitImplicitNullComparison(Value* operand) {
     return createBinaryOp(Token::NotEqual, operand, createConstantNull(operand->getType()));
 }
 
-IRValue* IRGenerator::emitNot(const UnaryExpr& expr) {
+Value* IRGenerator::emitNot(const UnaryExpr& expr) {
     auto* operand = emitExpr(expr.getOperand());
     if (operand->getType()->isPointerType()) {
         return createBinaryOp(Token::Equal, operand, createConstantNull(operand->getType())); //  TODO(ir): refactor to emitImplicitNullComparison?
@@ -120,7 +120,7 @@ IRValue* IRGenerator::emitNot(const UnaryExpr& expr) {
     return createNot(operand);
 }
 
-IRValue* IRGenerator::emitUnaryExpr(const UnaryExpr& expr) {
+Value* IRGenerator::emitUnaryExpr(const UnaryExpr& expr) {
     switch (expr.getOperator()) {
         case Token::Plus:
             return emitExpr(expr.getOperand());
@@ -150,14 +150,14 @@ IRValue* IRGenerator::emitUnaryExpr(const UnaryExpr& expr) {
 }
 
 // TODO: Lower increment and decrement statements to compound assignments so this isn't needed.
-IRValue* IRGenerator::emitConstantIncrement(const UnaryExpr& expr, int increment) {
+Value* IRGenerator::emitConstantIncrement(const UnaryExpr& expr, int increment) {
     auto operandType = expr.getOperand().getType();
     auto* ptr = emitLvalueExpr(expr.getOperand());
-    if (operandType.isPointerType() && llvm::isa<IRAllocaInst>(ptr)) {
+    if (operandType.isPointerType() && llvm::isa<AllocaInst>(ptr)) {
         ptr = createLoad(ptr);
     }
     auto* value = createLoad(ptr);
-    IRValue* result;
+    Value* result;
 
     if (value->getType()->isInteger()) {
         result = createBinaryOp(Token::Plus, value, createConstantInt(value->getType(), increment));
@@ -173,16 +173,16 @@ IRValue* IRGenerator::emitConstantIncrement(const UnaryExpr& expr, int increment
     return nullptr;
 }
 
-IRValue* IRGenerator::emitLogicalAnd(const Expr& left, const Expr& right) {
-    auto* rhsBlock = new IRBasicBlock("and.rhs", insertBlock->parent);
-    auto* endBlock = new IRBasicBlock("and.end");
+Value* IRGenerator::emitLogicalAnd(const Expr& left, const Expr& right) {
+    auto* rhsBlock = new Block("and.rhs", insertBlock->parent);
+    auto* endBlock = new Block("and.end");
 
-    IRValue* lhs = emitExpr(left);
+    Value* lhs = emitExpr(left);
     createCondBr(lhs, rhsBlock, endBlock);
     auto* lhsBlock = insertBlock;
 
     setInsertPoint(rhsBlock);
-    IRValue* rhs = emitExpr(right);
+    Value* rhs = emitExpr(right);
     createBr(endBlock);
     rhsBlock = insertBlock;
 
@@ -192,16 +192,16 @@ IRValue* IRGenerator::emitLogicalAnd(const Expr& left, const Expr& right) {
     return createPhi({{lhs, lhsBlock}, {rhs, rhsBlock}}, "and");
 }
 
-IRValue* IRGenerator::emitLogicalOr(const Expr& left, const Expr& right) {
-    auto* rhsBlock = new IRBasicBlock("or.rhs", insertBlock->parent);
-    auto* endBlock = new IRBasicBlock("or.end");
+Value* IRGenerator::emitLogicalOr(const Expr& left, const Expr& right) {
+    auto* rhsBlock = new Block("or.rhs", insertBlock->parent);
+    auto* endBlock = new Block("or.end");
 
-    IRValue* lhs = emitExpr(left);
+    Value* lhs = emitExpr(left);
     createCondBr(lhs, endBlock, rhsBlock);
     auto* lhsBlock = insertBlock;
 
     setInsertPoint(rhsBlock);
-    IRValue* rhs = emitExpr(right);
+    Value* rhs = emitExpr(right);
     createBr(endBlock);
     rhsBlock = insertBlock;
 
@@ -211,7 +211,7 @@ IRValue* IRGenerator::emitLogicalOr(const Expr& left, const Expr& right) {
     return createPhi({{lhs, lhsBlock}, {rhs, rhsBlock}}, "or");
 }
 
-IRValue* IRGenerator::emitBinaryExpr(const BinaryExpr& expr) {
+Value* IRGenerator::emitBinaryExpr(const BinaryExpr& expr) {
     if (expr.isAssignment()) {
         emitAssignment(expr);
         return nullptr;
@@ -245,7 +245,7 @@ static bool isBuiltinArrayToArrayRefConversion(Type sourceType, IRType* targetTy
     return sourceType.removePointer().isArrayWithConstantSize() && targetType->isStruct() && targetType->getName().startswith("ArrayRef<"); // TODO(ir)
 }
 
-IRValue* IRGenerator::emitExprForPassing(const Expr& expr, IRType* targetType) {
+Value* IRGenerator::emitExprForPassing(const Expr& expr, IRType* targetType) {
     if (!targetType) {
         return emitExpr(expr);
     }
@@ -287,11 +287,11 @@ IRValue* IRGenerator::emitExprForPassing(const Expr& expr, IRType* targetType) {
     }
 }
 
-void IRGenerator::emitAssert(IRValue* condition, SourceLocation location, llvm::StringRef message) {
+void IRGenerator::emitAssert(Value* condition, SourceLocation location, llvm::StringRef message) {
     condition = createIsNull(condition, "assert.condition");
     auto* function = insertBlock->parent;
-    auto* failBlock = new IRBasicBlock("assert.fail", function);
-    auto* successBlock = new IRBasicBlock("assert.success", function);
+    auto* failBlock = new Block("assert.fail", function);
+    auto* successBlock = new Block("assert.success", function);
     auto* assertFail = getFunctionProto(*llvm::cast<FunctionDecl>(Module::getStdlibModule()->getSymbolTable().findOne("assertFail")));
     createCondBr(condition, failBlock, successBlock);
     setInsertPoint(failBlock);
@@ -302,7 +302,7 @@ void IRGenerator::emitAssert(IRValue* condition, SourceLocation location, llvm::
     setInsertPoint(successBlock);
 }
 
-IRValue* IRGenerator::emitEnumCase(const EnumCase& enumCase, llvm::ArrayRef<NamedValue> associatedValueElements) {
+Value* IRGenerator::emitEnumCase(const EnumCase& enumCase, llvm::ArrayRef<NamedValue> associatedValueElements) {
     auto enumDecl = enumCase.getEnumDecl();
     auto tag = emitExpr(*enumCase.getValue());
     if (!enumDecl->hasAssociatedValues()) return tag;
@@ -313,7 +313,7 @@ IRValue* IRGenerator::emitEnumCase(const EnumCase& enumCase, llvm::ArrayRef<Name
 
     if (!associatedValueElements.empty()) {
         // TODO: This is duplicated in emitTupleExpr.
-        IRValue* associatedValue = createUndefined(enumCase.getAssociatedType());
+        Value* associatedValue = createUndefined(enumCase.getAssociatedType());
         int index = 0;
         for (auto& element : associatedValueElements) {
             associatedValue = createInsertValue(associatedValue, emitExpr(*element.getValue()), index++);
@@ -325,7 +325,7 @@ IRValue* IRGenerator::emitEnumCase(const EnumCase& enumCase, llvm::ArrayRef<Name
     return enumValue;
 }
 
-IRValue* IRGenerator::emitCallExpr(const CallExpr& expr, IRAllocaInst* thisAllocaForInit) {
+Value* IRGenerator::emitCallExpr(const CallExpr& expr, AllocaInst* thisAllocaForInit) {
     if (expr.isBuiltinConversion()) {
         return createCast(emitExpr(*expr.getArgs().front().getValue()), expr.getType());
     }
@@ -360,7 +360,7 @@ IRValue* IRGenerator::emitCallExpr(const CallExpr& expr, IRAllocaInst* thisAlloc
         return nullptr;
     }
 
-    IRValue* calleeValue = getFunctionForCall(expr);
+    Value* calleeValue = getFunctionForCall(expr);
 
     if (!calleeValue) {
         return nullptr;
@@ -368,8 +368,8 @@ IRValue* IRGenerator::emitCallExpr(const CallExpr& expr, IRAllocaInst* thisAlloc
 
     std::vector<IRType*> params;
 
-    if (auto* function = llvm::dyn_cast<IRFunction>(calleeValue)) {
-        params = map(function->params, [](const IRParam& p) { return p.type; });
+    if (auto* function = llvm::dyn_cast<Function>(calleeValue)) {
+        params = map(function->params, [](const Parameter& p) { return p.type; });
     } else {
         if (!calleeValue->getType()->getPointee()->isFunctionType()) {
             calleeValue = createLoad(calleeValue);
@@ -378,7 +378,7 @@ IRValue* IRGenerator::emitCallExpr(const CallExpr& expr, IRAllocaInst* thisAlloc
     }
 
     auto param = params.begin();
-    llvm::SmallVector<IRValue*, 16> args;
+    llvm::SmallVector<Value*, 16> args;
     auto* calleeDecl = expr.getCalleeDecl();
 
     if (calleeDecl->isMethodDecl()) {
@@ -413,22 +413,22 @@ IRValue* IRGenerator::emitCallExpr(const CallExpr& expr, IRAllocaInst* thisAlloc
     }
 }
 
-IRValue* IRGenerator::emitBuiltinCast(const CallExpr& expr) {
+Value* IRGenerator::emitBuiltinCast(const CallExpr& expr) {
     auto* value = emitExpr(*expr.getArgs().front().getValue());
     auto type = expr.getGenericArgs().front();
     return createCast(value, type);
 }
 
-IRValue* IRGenerator::emitSizeofExpr(const SizeofExpr& expr) {
+Value* IRGenerator::emitSizeofExpr(const SizeofExpr& expr) {
     return createSizeof(expr.getType());
 }
 
-IRValue* IRGenerator::emitAddressofExpr(const AddressofExpr& expr) {
-    IRValue* value = emitExpr(expr.getOperand());
+Value* IRGenerator::emitAddressofExpr(const AddressofExpr& expr) {
+    Value* value = emitExpr(expr.getOperand());
     return createCast(value, Type::getUIntPtr(), "address");
 }
 
-IRValue* IRGenerator::emitMemberAccess(IRValue* baseValue, const FieldDecl* field) {
+Value* IRGenerator::emitMemberAccess(Value* baseValue, const FieldDecl* field) {
     auto baseTypeDecl = field->getParentDecl();
     //    DEBUG_PRINT(baseValue->getType());
     auto baseType = baseValue->getType();
@@ -458,7 +458,7 @@ IRValue* IRGenerator::emitMemberAccess(IRValue* baseValue, const FieldDecl* fiel
     }
 }
 
-IRValue* IRGenerator::getArrayLength(const Expr& object, Type objectType) {
+Value* IRGenerator::getArrayLength(const Expr& object, Type objectType) {
     if (objectType.isArrayWithRuntimeSize()) {
         return createExtractValue(emitExpr(object), 1, "size");
     } else {
@@ -466,7 +466,7 @@ IRValue* IRGenerator::getArrayLength(const Expr& object, Type objectType) {
     }
 }
 
-IRValue* IRGenerator::getArrayIterator(const Expr& object, Type objectType) {
+Value* IRGenerator::getArrayIterator(const Expr& object, Type objectType) {
     auto type = BasicType::get("ArrayIterator", objectType.getElementType());
     auto* value = emitExprAsPointer(object);
     auto* elementPtr = createGEP(value, 0, 0);
@@ -476,7 +476,7 @@ IRValue* IRGenerator::getArrayIterator(const Expr& object, Type objectType) {
     return createInsertValue(iterator, end, 1);
 }
 
-IRValue* IRGenerator::emitMemberExpr(const MemberExpr& expr) {
+Value* IRGenerator::emitMemberExpr(const MemberExpr& expr) {
     if (auto* enumCase = llvm::dyn_cast_or_null<EnumCase>(expr.getDecl())) {
         return emitEnumCase(*enumCase, {});
     }
@@ -488,7 +488,7 @@ IRValue* IRGenerator::emitMemberExpr(const MemberExpr& expr) {
     return emitMemberAccess(emitLvalueExpr(*expr.getBaseExpr()), llvm::cast<FieldDecl>(expr.getDecl()));
 }
 
-IRValue* IRGenerator::emitTupleElementAccess(const MemberExpr& expr) {
+Value* IRGenerator::emitTupleElementAccess(const MemberExpr& expr) {
     unsigned index = 0;
     for (auto& element : expr.getBaseExpr()->getType().removePointer().getTupleElements()) {
         if (element.name == expr.getMemberName()) break;
@@ -507,7 +507,7 @@ IRValue* IRGenerator::emitTupleElementAccess(const MemberExpr& expr) {
     }
 }
 
-IRValue* IRGenerator::emitIndexExpr(const IndexExpr& expr) {
+Value* IRGenerator::emitIndexExpr(const IndexExpr& expr) {
     if (!expr.getBase()->getType().removePointer().isArrayType()) {
         return emitCallExpr(expr);
     }
@@ -535,7 +535,7 @@ IRValue* IRGenerator::emitIndexExpr(const IndexExpr& expr) {
     return createGEP(value, {createConstantInt(Type::getInt(), 0), emitExpr(*expr.getIndex())});
 }
 
-IRValue* IRGenerator::emitUnwrapExpr(const UnwrapExpr& expr) {
+Value* IRGenerator::emitUnwrapExpr(const UnwrapExpr& expr) {
     auto* value = emitExpr(expr.getOperand());
     llvm::StringRef message = "Unwrap failed";
 
@@ -548,7 +548,7 @@ IRValue* IRGenerator::emitUnwrapExpr(const UnwrapExpr& expr) {
     }
 }
 
-IRValue* IRGenerator::emitLambdaExpr(const LambdaExpr& expr) {
+Value* IRGenerator::emitLambdaExpr(const LambdaExpr& expr) {
     auto functionDecl = expr.getFunctionDecl();
 
     auto insertBlockBackup = insertBlock;
@@ -565,15 +565,15 @@ IRValue* IRGenerator::emitLambdaExpr(const LambdaExpr& expr) {
     return emitVarExpr(varExpr);
 }
 
-IRValue* IRGenerator::emitIfExpr(const IfExpr& expr) {
+Value* IRGenerator::emitIfExpr(const IfExpr& expr) {
     auto* condition = emitExpr(*expr.getCondition());
     if (condition->getType()->isPointerType()) {
         condition = emitImplicitNullComparison(condition);
     }
     auto* function = currentFunction;
-    auto* thenBlock = new IRBasicBlock("if.then", function);
-    auto* elseBlock = new IRBasicBlock("if.else");
-    auto* endIfBlock = new IRBasicBlock("if.end");
+    auto* thenBlock = new Block("if.then", function);
+    auto* elseBlock = new Block("if.else");
+    auto* endIfBlock = new Block("if.end");
     createCondBr(condition, thenBlock, elseBlock);
 
     setInsertPoint(thenBlock);
@@ -594,7 +594,7 @@ IRValue* IRGenerator::emitIfExpr(const IfExpr& expr) {
     return createPhi({{thenValue, thenBlock}, {elseValue, elseBlock}}, "phi");
 }
 
-IRValue* IRGenerator::emitImplicitCastExpr(const ImplicitCastExpr& expr) {
+Value* IRGenerator::emitImplicitCastExpr(const ImplicitCastExpr& expr) {
     if (expr.getType().isOptionalType() && !expr.getType().getWrappedType().isPointerTypeInLLVM() &&
         expr.getOperand()->getType() == expr.getType().getWrappedType()) {
         return emitOptionalConstruction(expr.getOperand()->getType(), emitExprWithoutAutoCast(*expr.getOperand()));
@@ -607,7 +607,7 @@ IRValue* IRGenerator::emitImplicitCastExpr(const ImplicitCastExpr& expr) {
     return emitExprWithoutAutoCast(*expr.getOperand());
 }
 
-IRValue* IRGenerator::emitExprWithoutAutoCast(const Expr& expr) {
+Value* IRGenerator::emitExprWithoutAutoCast(const Expr& expr) {
     switch (expr.getKind()) {
         case ExprKind::VarExpr:
             return emitVarExpr(llvm::cast<VarExpr>(expr));
@@ -655,7 +655,7 @@ IRValue* IRGenerator::emitExprWithoutAutoCast(const Expr& expr) {
     llvm_unreachable("all cases handled");
 }
 
-IRValue* IRGenerator::emitExpr(const Expr& expr) {
+Value* IRGenerator::emitExpr(const Expr& expr) {
     auto* value = emitLvalueExpr(expr);
 
     if (value) {
@@ -675,11 +675,11 @@ IRValue* IRGenerator::emitExpr(const Expr& expr) {
     return value;
 }
 
-IRValue* IRGenerator::emitLvalueExpr(const Expr& expr) {
+Value* IRGenerator::emitLvalueExpr(const Expr& expr) {
     return emitAutoCast(emitExprWithoutAutoCast(expr), expr);
 }
 
-IRValue* IRGenerator::emitExprAsPointer(const Expr& expr) {
+Value* IRGenerator::emitExprAsPointer(const Expr& expr) {
     auto* value = emitLvalueExpr(expr);
     if (!value->getType()->isPointerType()) {
         value = createTempAlloca(value);
@@ -687,7 +687,7 @@ IRValue* IRGenerator::emitExprAsPointer(const Expr& expr) {
     return value;
 }
 
-IRValue* IRGenerator::emitExprOrEnumTag(const Expr& expr, IRValue** enumValue) {
+Value* IRGenerator::emitExprOrEnumTag(const Expr& expr, Value** enumValue) {
     if (auto* memberExpr = llvm::dyn_cast<MemberExpr>(&expr)) {
         if (auto* enumCase = llvm::dyn_cast_or_null<EnumCase>(memberExpr->getDecl())) {
             return emitExpr(*enumCase->getValue());
@@ -705,7 +705,7 @@ IRValue* IRGenerator::emitExprOrEnumTag(const Expr& expr, IRValue** enumValue) {
     return emitExpr(expr);
 }
 
-IRValue* IRGenerator::emitAutoCast(IRValue* value, const Expr& expr) {
+Value* IRGenerator::emitAutoCast(Value* value, const Expr& expr) {
     // Handle optionals that have been implicitly unwrapped due to data-flow analysis.
     if (expr.hasAssignableType() && expr.getAssignableType().isOptionalType() && !expr.getAssignableType().getWrappedType().isPointerType() &&
         expr.getType() == expr.getAssignableType().getWrappedType()) {
@@ -724,6 +724,6 @@ IRValue* IRGenerator::emitAutoCast(IRValue* value, const Expr& expr) {
     return value;
 }
 
-void IRGenerator::setInsertPoint(IRBasicBlock* block) {
+void IRGenerator::setInsertPoint(Block* block) {
     insertBlock = block;
 }

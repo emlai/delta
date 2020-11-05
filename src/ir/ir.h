@@ -15,8 +15,8 @@ class StringRef;
 
 namespace delta {
 
-struct IRFunction;
-struct IRBasicBlock;
+struct Function;
+struct Block;
 struct IRBasicType;
 
 enum class IRTypeKind {
@@ -101,267 +101,267 @@ llvm::raw_ostream& operator<<(llvm::raw_ostream& stream, IRType* type);
 // TODO(ir): Rename IRGenerator to IRBuilder? And LLVMGenerator to LLVMBuilder?
 // TODO(ir): Reorder these and ensure names are consistent and simple.
 enum class ValueKind {
-    IRInstruction, // First instruction // TODO(ir): Remove, this is abstract.
-    IRAllocaInst,
-    IRReturnInst,
-    IRBranchInst, // TODO(ir) rename to Goto?
-    IRConditionalBranchInst,
-    IRPhiInst,
-    IRSwitchInst,
-    IRLoadInst,
-    IRStoreInst,
-    IRInsertValueInst,
-    IRExtractValueInst,
-    IRCallInst,
-    IRBinaryOp,
-    IRUnaryOp,
-    IRGetElementPtr,
-    IRConstGEP,
-    IRCastInst,
-    IRUnreachable,
-    IRSizeof, // Last instruction
-    IRBasicBlock,
-    IRFunction,
-    IRParam,
-    IRGlobalVariable,
-    IRConstantString,
-    IRConstantInt,
-    IRConstantFP,
-    IRConstantBool,
-    IRConstantNull,
-    IRUndefined,
+    Instruction, // First instruction // TODO(ir): Remove, this is abstract.
+    AllocaInst,
+    ReturnInst,
+    BranchInst,
+    CondBranchInst,
+    PhiInst,
+    SwitchInst,
+    LoadInst,
+    StoreInst,
+    InsertInst,
+    ExtractInst,
+    CallInst,
+    BinaryInst,
+    UnaryInst,
+    GEPInst,
+    ConstGEPInst,
+    CastInst,
+    UnreachableInst,
+    SizeofInst, // Last instruction
+    Block,
+    Function,
+    Parameter,
+    GlobalVariable,
+    ConstantString,
+    ConstantInt,
+    ConstantFP,
+    ConstantBool,
+    ConstantNull,
+    Undefined,
     IRModule,
 };
 
-struct IRValue {
+struct Value {
     IRType* getType() const;
     std::string getName() const;
-    bool isTerminator() const { return kind == ValueKind::IRReturnInst || kind == ValueKind::IRBranchInst || kind == ValueKind::IRConditionalBranchInst; }
+    bool isTerminator() const { return kind == ValueKind::ReturnInst || kind == ValueKind::BranchInst || kind == ValueKind::CondBranchInst; }
     void print(llvm::raw_ostream& stream) const;
 
     ValueKind kind;
 };
 
-struct IRInstruction : IRValue {
+struct Instruction : Value {
     // TODO(ir) rename "e" in classof functions
-    static bool classof(const IRValue* e) { return e->kind >= ValueKind::IRInstruction && e->kind <= ValueKind::IRSizeof; }
+    static bool classof(const Value* e) { return e->kind >= ValueKind::Instruction && e->kind <= ValueKind::SizeofInst; }
 };
 
-struct IRAllocaInst : IRInstruction {
+struct AllocaInst : Instruction {
     IRType* allocatedType;
     std::string name;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRAllocaInst; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::AllocaInst; }
 };
 
-struct IRReturnInst : IRInstruction {
-    IRValue* value;
+struct ReturnInst : Instruction {
+    Value* value;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRReturnInst; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::ReturnInst; }
 };
 
-struct IRBranchInst : IRInstruction {
-    IRBasicBlock* destination;
+struct BranchInst : Instruction {
+    Block* destination;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRBranchInst; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::BranchInst; }
 };
 
-struct IRConditionalBranchInst : IRInstruction {
-    IRValue* condition;
-    IRBasicBlock* trueBlock;
-    IRBasicBlock* falseBlock;
+struct CondBranchInst : Instruction {
+    Value* condition;
+    Block* trueBlock;
+    Block* falseBlock;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRConditionalBranchInst; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::CondBranchInst; }
 };
 
-struct IRPhiInst : IRInstruction {
-    std::vector<std::pair<IRValue*, IRBasicBlock*>> valuesAndPredecessors;
+struct PhiInst : Instruction {
+    std::vector<std::pair<Value*, Block*>> valuesAndPredecessors;
     std::string name;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRPhiInst; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::PhiInst; }
 };
 
-struct IRSwitchInst : IRInstruction {
-    IRValue* condition;
-    IRBasicBlock* defaultBlock;
-    std::vector<std::pair<IRValue*, IRBasicBlock*>> cases;
+struct SwitchInst : Instruction {
+    Value* condition;
+    Block* defaultBlock;
+    std::vector<std::pair<Value*, Block*>> cases;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRSwitchInst; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::SwitchInst; }
 };
 
-struct IRLoadInst : IRInstruction {
-    IRValue* value;
+struct LoadInst : Instruction {
+    Value* value;
     std::string name;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRLoadInst; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::LoadInst; }
 };
 
-struct IRStoreInst : IRInstruction {
-    IRValue* value;
-    IRValue* pointer;
+struct StoreInst : Instruction {
+    Value* value;
+    Value* pointer;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRStoreInst; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::StoreInst; }
 };
 
-struct IRInsertValueInst : IRInstruction {
-    IRValue* aggregate;
-    IRValue* value;
+struct InsertInst : Instruction {
+    Value* aggregate;
+    Value* value;
     int index;
     std::string name;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRInsertValueInst; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::InsertInst; }
 };
 
-struct IRExtractValueInst : IRInstruction {
-    IRValue* aggregate;
+struct ExtractInst : Instruction {
+    Value* aggregate;
     int index;
     std::string name;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRExtractValueInst; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::ExtractInst; }
 };
 
-struct IRCallInst : IRInstruction {
-    IRValue* function;
-    std::vector<IRValue*> args;
+struct CallInst : Instruction {
+    Value* function;
+    std::vector<Value*> args;
     std::string name;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRCallInst; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::CallInst; }
 };
 
-struct IRBinaryOp : IRInstruction {
+struct BinaryInst : Instruction {
     BinaryOperator op;
-    IRValue* left;
-    IRValue* right;
+    Value* left;
+    Value* right;
     std::string name;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRBinaryOp; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::BinaryInst; }
 };
 
-struct IRUnaryOp : IRInstruction {
+struct UnaryInst : Instruction {
     UnaryOperator op;
-    IRValue* operand;
+    Value* operand;
     std::string name;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRUnaryOp; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::UnaryInst; }
 };
 
-struct IRGetElementPtr : IRInstruction {
-    IRValue* pointer;
-    std::vector<IRValue*> indexes;
+struct GEPInst : Instruction {
+    Value* pointer;
+    std::vector<Value*> indexes;
     std::string name;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRGetElementPtr; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::GEPInst; }
 };
 
-struct IRConstGEP : IRInstruction {
-    IRValue* pointer;
+struct ConstGEPInst : Instruction {
+    Value* pointer;
     int index0, index1;
     std::string name;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRConstGEP; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::ConstGEPInst; }
 };
 
-struct IRCastInst : IRInstruction {
-    IRValue* value;
+struct CastInst : Instruction {
+    Value* value;
     IRType* type;
     std::string name;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRCastInst; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::CastInst; }
 };
 
-struct IRUnreachable : IRInstruction {
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRUnreachable; }
+struct UnreachableInst : Instruction {
+    static bool classof(const Value* e) { return e->kind == ValueKind::UnreachableInst; }
 };
 
-struct IRSizeof : IRInstruction {
+struct SizeofInst : Instruction {
     IRType* type;
     std::string name;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRSizeof; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::SizeofInst; }
 };
 
 // TODO(ir): Rename to simply Block?
-struct IRBasicBlock : IRValue {
+struct Block : Value {
     std::string name;
-    IRFunction* parent;
-    std::vector<IRInstruction*> insts;
+    Function* parent;
+    std::vector<Instruction*> insts;
 
-    IRBasicBlock(std::string name, IRFunction* parent = nullptr);
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRBasicBlock; }
+    Block(std::string name, Function* parent = nullptr);
+    static bool classof(const Value* e) { return e->kind == ValueKind::Block; }
 };
 
-struct IRParam : IRValue {
+struct Parameter : Value {
     IRType* type;
     std::string name;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRParam; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::Parameter; }
 };
 
-struct IRFunction : IRValue {
+struct Function : Value {
     std::string mangledName;
     IRType* returnType;
-    std::vector<IRParam> params;
-    std::vector<IRBasicBlock*> body; // TODO(ir) rename to blocks?
+    std::vector<Parameter> params;
+    std::vector<Block*> body; // TODO(ir) rename to blocks?
     bool isExtern;
     bool isVariadic;
     SourceLocation location;
     int nameCounter = 0; // TODO(ir) cleanup, merge with IRGenerator::nameCounter?
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRFunction; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::Function; }
 };
 
-struct IRGlobalVariable : IRValue {
-    IRValue* value;
+struct GlobalVariable : Value {
+    Value* value;
     std::string name;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRGlobalVariable; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::GlobalVariable; }
 };
 
-struct IRConstantString : IRValue {
+struct ConstantString : Value {
     std::string value;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRConstantString; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::ConstantString; }
 };
 
-struct IRConstantInt : IRValue {
+struct ConstantInt : Value {
     IRType* type;
     llvm::APSInt value;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRConstantInt; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::ConstantInt; }
 };
 
-struct IRConstantFP : IRValue {
+struct ConstantFP : Value {
     IRType* type;
     llvm::APFloat value;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRConstantFP; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::ConstantFP; }
 };
 
-struct IRConstantBool : IRValue {
+struct ConstantBool : Value {
     bool value;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRConstantBool; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::ConstantBool; }
 };
 
-struct IRConstantNull : IRValue {
+struct ConstantNull : Value {
     IRType* type;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRConstantNull; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::ConstantNull; }
 };
 
-struct IRUndefined : IRValue {
+struct Undefined : Value {
     IRType* type;
 
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRUndefined; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::Undefined; }
 };
 
 struct IRModule {
     std::string name;
-    std::vector<IRFunction*> functions;
-    std::vector<IRGlobalVariable*> globalVariables;
+    std::vector<Function*> functions;
+    std::vector<GlobalVariable*> globalVariables;
 
     void print(llvm::raw_ostream& stream) const;
-    static bool classof(const IRValue* e) { return e->kind == ValueKind::IRModule; }
+    static bool classof(const Value* e) { return e->kind == ValueKind::IRModule; }
 };
 
 } // namespace delta

@@ -23,7 +23,7 @@ IRGenerator::IRGenerator() {
     scopes.push_back(IRGenScope(*this));
 }
 
-void IRGenerator::setLocalValue(IRValue* value, const VariableDecl* decl) {
+void IRGenerator::setLocalValue(Value* value, const VariableDecl* decl) {
     auto it = scopes.back().valuesByDecl.try_emplace(decl, value);
     ASSERT(it.second);
 
@@ -32,7 +32,7 @@ void IRGenerator::setLocalValue(IRValue* value, const VariableDecl* decl) {
     }
 }
 
-IRValue* IRGenerator::getValueOrNull(const Decl* decl) {
+Value* IRGenerator::getValueOrNull(const Decl* decl) {
     for (auto& scope : llvm::reverse(scopes)) {
         if (auto* value = scope.valuesByDecl.lookup(decl)) {
             return value;
@@ -42,7 +42,7 @@ IRValue* IRGenerator::getValueOrNull(const Decl* decl) {
     return nullptr;
 }
 
-IRValue* IRGenerator::getValue(const Decl* decl) {
+Value* IRGenerator::getValue(const Decl* decl) {
     if (auto* value = getValueOrNull(decl)) {
         return value;
     }
@@ -59,7 +59,7 @@ IRValue* IRGenerator::getValue(const Decl* decl) {
     }
 }
 
-IRValue* IRGenerator::getThis(IRType* targetType) {
+Value* IRGenerator::getThis(IRType* targetType) {
     auto value = getValue(nullptr);
 
     if (targetType && !value->getType()->equals(targetType)) { // TODO(ir) this fixes implicit casting to base type pointer. but shouldn't this be handled in some
@@ -99,11 +99,11 @@ DestructorDecl* IRGenerator::getDefaultDestructor(TypeDecl& typeDecl) {
     return nullptr;
 }
 
-void IRGenerator::deferDestructorCall(IRValue* receiver, const VariableDecl* decl) {
+void IRGenerator::deferDestructorCall(Value* receiver, const VariableDecl* decl) {
     auto type = decl->getType();
     if (!type) return; // TODO(ir): Type should not be null.
     //    ASSERT(type);
-    IRFunction* proto = nullptr;
+    Function* proto = nullptr;
 
     if (auto* destructor = type.getDestructor()) {
         proto = getFunctionProto(*destructor);
@@ -125,18 +125,18 @@ void IRGenerator::emitDeferredExprsAndDestructorCallsForReturn() {
     scopes.back().clear();
 }
 
-IRAllocaInst* IRGenerator::createEntryBlockAlloca(Type type, const llvm::Twine& name) {
+AllocaInst* IRGenerator::createEntryBlockAlloca(Type type, const llvm::Twine& name) {
     return createEntryBlockAlloca(getILType(type), name);
 }
 
-IRAllocaInst* IRGenerator::createEntryBlockAlloca(IRType* type, const llvm::Twine& name) {
+AllocaInst* IRGenerator::createEntryBlockAlloca(IRType* type, const llvm::Twine& name) {
     // TODO(ir) remove getiltype calls in callsite
-    auto alloca = new IRAllocaInst{ValueKind::IRAllocaInst, type, name.str()};
+    auto alloca = new AllocaInst{ValueKind::AllocaInst, type, name.str()};
     auto& entryBlock = currentFunction->body.front()->insts;
     auto insertPosition = entryBlock.end();
 
     for (auto it = entryBlock.begin(), end = entryBlock.end(); it != end; ++it) {
-        if (!llvm::isa<IRAllocaInst>(*it)) {
+        if (!llvm::isa<AllocaInst>(*it)) {
             insertPosition = it;
             break;
         }
@@ -146,34 +146,34 @@ IRAllocaInst* IRGenerator::createEntryBlockAlloca(IRType* type, const llvm::Twin
     return alloca;
 }
 
-IRAllocaInst* IRGenerator::createTempAlloca(IRValue* value) {
+AllocaInst* IRGenerator::createTempAlloca(Value* value) {
     auto alloca = createEntryBlockAlloca(value->getType()); // TODO(ir) add "temp" name
     createStore(value, alloca);
     return alloca;
 }
 
-IRValue* IRGenerator::createLoad(IRValue* value) {
-    auto load = new IRLoadInst{ValueKind::IRLoadInst, value, value->getName() + ".load"};
+Value* IRGenerator::createLoad(Value* value) {
+    auto load = new LoadInst{ValueKind::LoadInst, value, value->getName() + ".load"};
     insertBlock->insts.push_back(load);
     return load;
 }
 
-void IRGenerator::createStore(IRValue* value, IRValue* pointer) {
+void IRGenerator::createStore(Value* value, Value* pointer) {
     ASSERT(pointer->getType()->isPointerType());
     ASSERT(pointer->getType()->getPointee()->equals(value->getType()));
-    auto store = new IRStoreInst{ValueKind::IRStoreInst, value, pointer};
+    auto store = new StoreInst{ValueKind::StoreInst, value, pointer};
     insertBlock->insts.push_back(store);
 }
 
-IRValue* IRGenerator::createCall(IRValue* function, llvm::ArrayRef<IRValue*> args) {
-    ASSERT(function->kind == ValueKind::IRFunction || (function->getType()->isPointerType() && function->getType()->getPointee()->isFunctionType()));
-    auto call = new IRCallInst{ValueKind::IRCallInst, function, args, ""};
+Value* IRGenerator::createCall(Value* function, llvm::ArrayRef<Value*> args) {
+    ASSERT(function->kind == ValueKind::Function || (function->getType()->isPointerType() && function->getType()->getPointee()->isFunctionType()));
+    auto call = new CallInst{ValueKind::CallInst, function, args, ""};
     insertBlock->insts.push_back(call);
     return call;
 }
 
-IRValue* IRGenerator::emitAssignmentLHS(const Expr& lhs) {
-    IRValue* value = emitLvalueExpr(lhs);
+Value* IRGenerator::emitAssignmentLHS(const Expr& lhs) {
+    Value* value = emitLvalueExpr(lhs);
 
     // Don't call destructor for LHS when assigning to fields in constructor.
     if (auto* constructorDecl = llvm::dyn_cast<ConstructorDecl>(currentDecl)) {
@@ -198,7 +198,7 @@ IRValue* IRGenerator::emitAssignmentLHS(const Expr& lhs) {
     return value;
 }
 
-void IRGenerator::createDestructorCall(IRFunction* destructor, IRValue* receiver) {
+void IRGenerator::createDestructorCall(Function* destructor, Value* receiver) {
     if (!receiver->getType()->isPointerType()) {
         receiver = createTempAlloca(receiver);
     }
@@ -206,7 +206,7 @@ void IRGenerator::createDestructorCall(IRFunction* destructor, IRValue* receiver
     createCall(destructor, receiver);
 }
 
-IRValue* IRGenerator::getFunctionForCall(const CallExpr& call) {
+Value* IRGenerator::getFunctionForCall(const CallExpr& call) {
     const Decl* decl = call.getCalleeDecl();
     if (!decl) return nullptr;
 

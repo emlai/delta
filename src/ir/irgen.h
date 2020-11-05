@@ -26,14 +26,14 @@ struct IRGenScope {
     void clear();
 
     struct DeferredDestructor {
-        IRFunction* function;
-        IRValue* value;
+        Function* function;
+        Value* value;
         const Decl* decl;
     };
 
     llvm::SmallVector<const Expr*, 8> deferredExprs;
     llvm::SmallVector<DeferredDestructor, 8> destructorsToCall;
-    llvm::DenseMap<const Decl*, IRValue*> valuesByDecl;
+    llvm::DenseMap<const Decl*, Value*> valuesByDecl;
     IRGenerator* irGenerator;
 };
 
@@ -46,61 +46,61 @@ public:
 private:
     friend struct IRGenScope;
 
-    void emitFunctionBody(const FunctionDecl& decl, IRFunction& function);
-    void createDestructorCall(IRFunction* destructor, IRValue* receiver);
+    void emitFunctionBody(const FunctionDecl& decl, Function& function);
+    void createDestructorCall(Function* destructor, Value* receiver);
 
     /// 'decl' is null if this is the 'this' value.
-    void setLocalValue(IRValue* value, const VariableDecl* decl);
-    IRValue* getValueOrNull(const Decl* decl);
-    IRValue* getValue(const Decl* decl);
-    IRValue* getThis(IRType* targetType = nullptr);
+    void setLocalValue(Value* value, const VariableDecl* decl);
+    Value* getValueOrNull(const Decl* decl);
+    Value* getValue(const Decl* decl);
+    Value* getThis(IRType* targetType = nullptr);
 
     /// Emits and loads value.
-    IRValue* emitExpr(const Expr& expr);
+    Value* emitExpr(const Expr& expr);
     /// Emits value without loading.
-    IRValue* emitLvalueExpr(const Expr& expr);
+    Value* emitLvalueExpr(const Expr& expr);
     /// Emits value as a pointer, storing it in a temporary alloca if needed.
-    IRValue* emitExprAsPointer(const Expr& expr);
-    IRValue* emitExprOrEnumTag(const Expr& expr, IRValue** enumValue);
-    IRValue* emitExprWithoutAutoCast(const Expr& expr);
-    IRValue* emitAutoCast(IRValue* value, const Expr& expr);
-    IRValue* emitVarExpr(const VarExpr& expr);
-    IRValue* emitStringLiteralExpr(const StringLiteralExpr& expr);
-    IRValue* emitCharacterLiteralExpr(const CharacterLiteralExpr& expr);
-    IRValue* emitIntLiteralExpr(const IntLiteralExpr& expr);
-    IRValue* emitFloatLiteralExpr(const FloatLiteralExpr& expr);
-    IRValue* emitBoolLiteralExpr(const BoolLiteralExpr& expr);
-    IRValue* emitNullLiteralExpr(const NullLiteralExpr& expr);
-    IRValue* emitUndefinedLiteralExpr(const UndefinedLiteralExpr& expr);
-    IRValue* emitArrayLiteralExpr(const ArrayLiteralExpr& expr);
-    IRValue* emitTupleExpr(const TupleExpr& expr);
-    IRValue* emitImplicitNullComparison(IRValue* operand);
-    IRValue* emitNot(const UnaryExpr& expr);
-    IRValue* emitUnaryExpr(const UnaryExpr& expr);
-    IRValue* emitConstantIncrement(const UnaryExpr& expr, int value);
-    IRValue* emitLogicalAnd(const Expr& left, const Expr& right);
-    IRValue* emitLogicalOr(const Expr& left, const Expr& right);
-    IRValue* emitBinaryExpr(const BinaryExpr& expr);
+    Value* emitExprAsPointer(const Expr& expr);
+    Value* emitExprOrEnumTag(const Expr& expr, Value** enumValue);
+    Value* emitExprWithoutAutoCast(const Expr& expr);
+    Value* emitAutoCast(Value* value, const Expr& expr);
+    Value* emitVarExpr(const VarExpr& expr);
+    Value* emitStringLiteralExpr(const StringLiteralExpr& expr);
+    Value* emitCharacterLiteralExpr(const CharacterLiteralExpr& expr);
+    Value* emitIntLiteralExpr(const IntLiteralExpr& expr);
+    Value* emitFloatLiteralExpr(const FloatLiteralExpr& expr);
+    Value* emitBoolLiteralExpr(const BoolLiteralExpr& expr);
+    Value* emitNullLiteralExpr(const NullLiteralExpr& expr);
+    Value* emitUndefinedLiteralExpr(const UndefinedLiteralExpr& expr);
+    Value* emitArrayLiteralExpr(const ArrayLiteralExpr& expr);
+    Value* emitTupleExpr(const TupleExpr& expr);
+    Value* emitImplicitNullComparison(Value* operand);
+    Value* emitNot(const UnaryExpr& expr);
+    Value* emitUnaryExpr(const UnaryExpr& expr);
+    Value* emitConstantIncrement(const UnaryExpr& expr, int value);
+    Value* emitLogicalAnd(const Expr& left, const Expr& right);
+    Value* emitLogicalOr(const Expr& left, const Expr& right);
+    Value* emitBinaryExpr(const BinaryExpr& expr);
     void emitAssignment(const BinaryExpr& expr);
-    IRValue* emitExprForPassing(const Expr& expr, IRType* targetType);
-    IRValue* emitOptionalConstruction(Type wrappedType, IRValue* arg);
-    void emitAssert(IRValue* condition, SourceLocation location, llvm::StringRef message = "Assertion failed");
-    IRValue* emitEnumCase(const EnumCase& enumCase, llvm::ArrayRef<NamedValue> associatedValueElements);
-    IRValue* emitCallExpr(const CallExpr& expr, IRAllocaInst* thisAllocaForInit = nullptr);
-    IRValue* emitBuiltinCast(const CallExpr& expr);
-    IRValue* emitSizeofExpr(const SizeofExpr& expr);
-    IRValue* emitAddressofExpr(const AddressofExpr& expr);
-    IRValue* emitMemberAccess(IRValue* baseValue, const FieldDecl* field);
-    IRValue* emitMemberExpr(const MemberExpr& expr);
-    IRValue* emitTupleElementAccess(const MemberExpr& expr);
-    IRValue* emitIndexExpr(const IndexExpr& expr);
-    IRValue* emitUnwrapExpr(const UnwrapExpr& expr);
-    IRValue* emitLambdaExpr(const LambdaExpr& expr);
-    IRValue* emitIfExpr(const IfExpr& expr);
-    IRValue* emitImplicitCastExpr(const ImplicitCastExpr& expr);
+    Value* emitExprForPassing(const Expr& expr, IRType* targetType);
+    Value* emitOptionalConstruction(Type wrappedType, Value* arg);
+    void emitAssert(Value* condition, SourceLocation location, llvm::StringRef message = "Assertion failed");
+    Value* emitEnumCase(const EnumCase& enumCase, llvm::ArrayRef<NamedValue> associatedValueElements);
+    Value* emitCallExpr(const CallExpr& expr, AllocaInst* thisAllocaForInit = nullptr);
+    Value* emitBuiltinCast(const CallExpr& expr);
+    Value* emitSizeofExpr(const SizeofExpr& expr);
+    Value* emitAddressofExpr(const AddressofExpr& expr);
+    Value* emitMemberAccess(Value* baseValue, const FieldDecl* field);
+    Value* emitMemberExpr(const MemberExpr& expr);
+    Value* emitTupleElementAccess(const MemberExpr& expr);
+    Value* emitIndexExpr(const IndexExpr& expr);
+    Value* emitUnwrapExpr(const UnwrapExpr& expr);
+    Value* emitLambdaExpr(const LambdaExpr& expr);
+    Value* emitIfExpr(const IfExpr& expr);
+    Value* emitImplicitCastExpr(const ImplicitCastExpr& expr);
 
     void emitDeferredExprsAndDestructorCallsForReturn();
-    void emitBlock(llvm::ArrayRef<Stmt*> stmts, IRBasicBlock* continuation);
+    void emitBlock(llvm::ArrayRef<Stmt*> stmts, Block* continuation);
     void emitReturnStmt(const ReturnStmt& stmt);
     void emitVarStmt(const VarStmt& stmt);
     void emitIfStmt(const IfStmt& ifStmt);
@@ -108,67 +108,67 @@ private:
     void emitForStmt(const ForStmt& forStmt);
     void emitBreakStmt(const BreakStmt&);
     void emitContinueStmt(const ContinueStmt&);
-    IRValue* emitAssignmentLHS(const Expr& lhs);
+    Value* emitAssignmentLHS(const Expr& lhs);
     void emitCompoundStmt(const CompoundStmt& stmt);
     void emitStmt(const Stmt& stmt);
 
     void emitDecl(const Decl& decl);
     void emitFunctionDecl(const FunctionDecl& decl);
-    IRValue* emitVarDecl(const VarDecl& decl);
+    Value* emitVarDecl(const VarDecl& decl);
 
-    IRValue* getFunctionForCall(const CallExpr& call);
-    IRFunction* getFunctionProto(const FunctionDecl& decl);
-    IRAllocaInst* createEntryBlockAlloca(IRType* type, const llvm::Twine& name = "");
-    IRAllocaInst* createEntryBlockAlloca(Type type, const llvm::Twine& name = "");
-    IRAllocaInst* createTempAlloca(IRValue* value);
-    IRValue* createLoad(IRValue* value);
-    void createStore(IRValue* value, IRValue* pointer);
-    IRValue* createCall(IRValue* function, llvm::ArrayRef<IRValue*> args);
-    void createCondBr(IRValue* condition, IRBasicBlock* trueBlock, IRBasicBlock* falseBlock) {
-        insertBlock->insts.push_back(new IRConditionalBranchInst{ValueKind::IRConditionalBranchInst, condition, trueBlock, falseBlock});
+    Value* getFunctionForCall(const CallExpr& call);
+    Function* getFunctionProto(const FunctionDecl& decl);
+    AllocaInst* createEntryBlockAlloca(IRType* type, const llvm::Twine& name = "");
+    AllocaInst* createEntryBlockAlloca(Type type, const llvm::Twine& name = "");
+    AllocaInst* createTempAlloca(Value* value);
+    Value* createLoad(Value* value);
+    void createStore(Value* value, Value* pointer);
+    Value* createCall(Value* function, llvm::ArrayRef<Value*> args);
+    void createCondBr(Value* condition, Block* trueBlock, Block* falseBlock) {
+        insertBlock->insts.push_back(new CondBranchInst{ValueKind::CondBranchInst, condition, trueBlock, falseBlock});
     }
-    void createBr(IRBasicBlock* destination) { insertBlock->insts.push_back(new IRBranchInst{ValueKind::IRBranchInst, destination}); }
+    void createBr(Block* destination) { insertBlock->insts.push_back(new BranchInst{ValueKind::BranchInst, destination}); }
 
-    IRValue* createPhi(std::vector<std::pair<IRValue*, IRBasicBlock*>> valuesAndPredecessors, const llvm::Twine& name = "") {
-        auto phi = new IRPhiInst{ValueKind::IRPhiInst, std::move(valuesAndPredecessors), name.str()};
+    Value* createPhi(std::vector<std::pair<Value*, Block*>> valuesAndPredecessors, const llvm::Twine& name = "") {
+        auto phi = new PhiInst{ValueKind::PhiInst, std::move(valuesAndPredecessors), name.str()};
         insertBlock->insts.push_back(phi);
         return phi;
     }
 
-    IRValue* createInsertValue(IRValue* aggregate, IRValue* value, int index) {
-        auto inst = new IRInsertValueInst{ValueKind::IRInsertValueInst, aggregate, value, index, ""};
+    Value* createInsertValue(Value* aggregate, Value* value, int index) {
+        auto inst = new InsertInst{ValueKind::InsertInst, aggregate, value, index, ""};
         insertBlock->insts.push_back(inst);
         return inst;
     }
-    IRValue* createExtractValue(IRValue* aggregate, int index, const llvm::Twine& name = "") {
-        auto inst = new IRExtractValueInst{ValueKind::IRExtractValueInst, aggregate, index, name.str()};
+    Value* createExtractValue(Value* aggregate, int index, const llvm::Twine& name = "") {
+        auto inst = new ExtractInst{ValueKind::ExtractInst, aggregate, index, name.str()};
         insertBlock->insts.push_back(inst);
         return inst;
     }
 
     // Constants // TODO(ir) remove unused
-    IRValue* createConstantInt(IRType* type, llvm::APSInt value) { return new IRConstantInt{ValueKind::IRConstantInt, type, std::move(value)}; }
-    IRValue* createConstantInt(IRType* type, int64_t value) { return createConstantInt(type, llvm::APSInt::get(value)); }
-    IRValue* createConstantInt(Type type, llvm::APSInt value) { return createConstantInt(getILType(type), std::move(value)); }
-    IRValue* createConstantInt(Type type, int64_t value) { return createConstantInt(getILType(type), llvm::APSInt::get(value)); }
-    IRValue* createConstantFP(IRType* type, llvm::APFloat value) { return new IRConstantFP{ValueKind::IRConstantFP, type, std::move(value)}; }
-    IRValue* createConstantFP(IRType* type, double value) { return createConstantFP(type, llvm::APFloat(value)); }
-    IRValue* createConstantFP(Type type, llvm::APFloat value) { return createConstantFP(getILType(type), std::move(value)); }
-    IRValue* createConstantFP(Type type, double value) { return createConstantFP(getILType(type), llvm::APFloat(value)); }
-    IRValue* createConstantBool(bool value) { return new IRConstantBool{ValueKind::IRConstantBool, value}; }
-    IRValue* createConstantNull(IRType* type) {
+    Value* createConstantInt(IRType* type, llvm::APSInt value) { return new ConstantInt{ValueKind::ConstantInt, type, std::move(value)}; }
+    Value* createConstantInt(IRType* type, int64_t value) { return createConstantInt(type, llvm::APSInt::get(value)); }
+    Value* createConstantInt(Type type, llvm::APSInt value) { return createConstantInt(getILType(type), std::move(value)); }
+    Value* createConstantInt(Type type, int64_t value) { return createConstantInt(getILType(type), llvm::APSInt::get(value)); }
+    Value* createConstantFP(IRType* type, llvm::APFloat value) { return new ConstantFP{ValueKind::ConstantFP, type, std::move(value)}; }
+    Value* createConstantFP(IRType* type, double value) { return createConstantFP(type, llvm::APFloat(value)); }
+    Value* createConstantFP(Type type, llvm::APFloat value) { return createConstantFP(getILType(type), std::move(value)); }
+    Value* createConstantFP(Type type, double value) { return createConstantFP(getILType(type), llvm::APFloat(value)); }
+    Value* createConstantBool(bool value) { return new ConstantBool{ValueKind::ConstantBool, value}; }
+    Value* createConstantNull(IRType* type) {
         ASSERT(type->isPointerType());
-        return new IRConstantNull{ValueKind::IRConstantNull, type};
+        return new ConstantNull{ValueKind::ConstantNull, type};
     }
-    IRValue* createConstantNull(Type type) {
+    Value* createConstantNull(Type type) {
         ASSERT(type.isPointerTypeInLLVM());
         return createConstantNull(getILType(type));
     }
-    IRValue* createUndefined(IRType* type) { return new IRUndefined{ValueKind::IRUndefined, type}; }
-    IRValue* createUndefined(Type type) { return createUndefined(getILType(type)); }
+    Value* createUndefined(IRType* type) { return new Undefined{ValueKind::Undefined, type}; }
+    Value* createUndefined(Type type) { return createUndefined(getILType(type)); }
 
     // Arithmetic/comparison operations
-    IRValue* createBinaryOp(BinaryOperator op, IRValue* left, IRValue* right) {
+    Value* createBinaryOp(BinaryOperator op, Value* left, Value* right) {
         // TODO(ir): Move this out of this func to emitBinaryOp?
         if (left->getType()->isPointerType() && left->getType()->getPointee()->equals(right->getType())) {
             left = createLoad(left);
@@ -177,13 +177,13 @@ private:
         }
 
         ASSERT(left->getType()->equals(right->getType()));
-        auto binaryOp = new IRBinaryOp{ValueKind::IRBinaryOp, op, left, right, ""};
+        auto binaryOp = new BinaryInst{ValueKind::BinaryInst, op, left, right, ""};
         insertBlock->insts.push_back(binaryOp);
         return binaryOp;
     }
 
-    IRValue* createIsNull(IRValue* value, const llvm::Twine& name = "") {
-        IRValue* nullValue;
+    Value* createIsNull(Value* value, const llvm::Twine& name = "") {
+        Value* nullValue;
         auto type = value->getType();
 
         // TODO(ir): refactor it into a separate function.
@@ -200,78 +200,78 @@ private:
         }
 
         ASSERT(value->getType()->equals(nullValue->getType()));
-        auto op = new IRBinaryOp{ValueKind::IRBinaryOp, Token::Equal, value, nullValue, name.str()};
+        auto op = new BinaryInst{ValueKind::BinaryInst, Token::Equal, value, nullValue, name.str()};
         insertBlock->insts.push_back(op);
         return op;
     }
 
-    IRValue* createNeg(IRValue* value) {
-        auto op = new IRUnaryOp{ValueKind::IRUnaryOp, Token::Minus, value, ""};
+    Value* createNeg(Value* value) {
+        auto op = new UnaryInst{ValueKind::UnaryInst, Token::Minus, value, ""};
         insertBlock->insts.push_back(op);
         return op;
     }
 
-    IRValue* createNot(IRValue* value) {
-        auto op = new IRUnaryOp{ValueKind::IRUnaryOp, Token::Not, value, ""};
+    Value* createNot(Value* value) {
+        auto op = new UnaryInst{ValueKind::UnaryInst, Token::Not, value, ""};
         insertBlock->insts.push_back(op);
         return op;
     }
 
     // GEP
-    IRValue* createGEP(IRValue* pointer, std::vector<IRValue*> indexes, const llvm::Twine& name = "") {
-        auto gep = new IRGetElementPtr{ValueKind::IRGetElementPtr, pointer, std::move(indexes), name.str()};
+    Value* createGEP(Value* pointer, std::vector<Value*> indexes, const llvm::Twine& name = "") {
+        auto gep = new GEPInst{ValueKind::GEPInst, pointer, std::move(indexes), name.str()};
         insertBlock->insts.push_back(gep);
         return gep;
     }
 
-    IRValue* createGEP(IRValue* pointer, int index0, int index1, const llvm::Twine& name = "") {
+    Value* createGEP(Value* pointer, int index0, int index1, const llvm::Twine& name = "") {
         if (pointer->getType()->getPointee()->isArrayType()) {
             ASSERT(index1 < pointer->getType()->getPointee()->getArraySize());
         } else {
             ASSERT(index1 < (int) pointer->getType()->getPointee()->getFields().size());
         }
-        auto gep = new IRConstGEP{ValueKind::IRConstGEP, pointer, index0, index1, name.str()};
+        auto gep = new ConstGEPInst{ValueKind::ConstGEPInst, pointer, index0, index1, name.str()};
         insertBlock->insts.push_back(gep);
         return gep;
     }
 
     // Casts
-    IRValue* createCast(IRValue* value, IRType* type, const llvm::Twine& name = "") {
-        auto cast = new IRCastInst{ValueKind::IRCastInst, value, type, name.str()};
+    Value* createCast(Value* value, IRType* type, const llvm::Twine& name = "") {
+        auto cast = new CastInst{ValueKind::CastInst, value, type, name.str()};
         insertBlock->insts.push_back(cast);
         return cast;
     }
 
-    IRValue* createCast(IRValue* value, Type type, const llvm::Twine& name = "") { return createCast(value, getILType(type), name); }
-    IRValue* createGlobalStringPtr(llvm::StringRef value) { return new IRConstantString{ValueKind::IRConstantString, value}; }
-    IRValue* createSizeof(Type type) { return new IRSizeof{ValueKind::IRSizeof, getILType(type), ""}; }
+    Value* createCast(Value* value, Type type, const llvm::Twine& name = "") { return createCast(value, getILType(type), name); }
+    Value* createGlobalStringPtr(llvm::StringRef value) { return new ConstantString{ValueKind::ConstantString, value}; }
+    Value* createSizeof(Type type) { return new SizeofInst{ValueKind::SizeofInst, getILType(type), ""}; }
 
-    IRSwitchInst* createSwitch(IRValue* condition, IRBasicBlock* defaultBlock) {
-        auto switchInst = new IRSwitchInst{ValueKind::IRSwitchInst, condition, defaultBlock};
+    SwitchInst* createSwitch(Value* condition, Block* defaultBlock) {
+        auto switchInst = new SwitchInst{ValueKind::SwitchInst, condition, defaultBlock};
         insertBlock->insts.push_back(switchInst);
         return switchInst;
     }
 
-    void createUnreachable() { insertBlock->insts.push_back(new IRUnreachable{ValueKind::IRUnreachable}); }
-    void createReturn(IRValue* value) { insertBlock->insts.push_back(new IRReturnInst{ValueKind::IRReturnInst, value}); }
+    void createUnreachable() { insertBlock->insts.push_back(new UnreachableInst{ValueKind::UnreachableInst}); }
+    void createReturn(Value* value) { insertBlock->insts.push_back(new ReturnInst{ValueKind::ReturnInst, value}); }
 
-    IRValue* getArrayLength(const Expr& object, Type objectType);
-    IRValue* getArrayIterator(const Expr& object, Type objectType);
+    Value* getArrayLength(const Expr& object, Type objectType);
+    Value* getArrayIterator(const Expr& object, Type objectType);
 
     void beginScope();
     void endScope();
     void deferEvaluationOf(const Expr& expr);
     DestructorDecl* getDefaultDestructor(TypeDecl& typeDecl);
-    void deferDestructorCall(IRValue* receiver, const VariableDecl* decl);
+    void deferDestructorCall(Value* receiver, const VariableDecl* decl);
     IRGenScope& globalScope() { return scopes.front(); }
     std::string createName() { return std::to_string(nameCounter++); }
 
-    void setInsertPoint(IRBasicBlock* block);
+    void setInsertPoint(Block* block);
 
 private:
     struct FunctionInstantiation {
         const FunctionDecl* decl;
-        IRFunction* function;
+        Function* function;
     };
 
     std::vector<IRGenScope> scopes;
@@ -283,16 +283,16 @@ private:
     const Decl* currentDecl;
 
     /// The basic blocks to branch to on a 'break'/'continue' statement.
-    llvm::SmallVector<IRBasicBlock*, 4> breakTargets;
-    llvm::SmallVector<IRBasicBlock*, 4> continueTargets;
+    llvm::SmallVector<Block*, 4> breakTargets;
+    llvm::SmallVector<Block*, 4> continueTargets;
 
-    IRBasicBlock* insertBlock;
+    Block* insertBlock;
 
     static const int optionalHasValueFieldIndex = 0;
     static const int optionalValueFieldIndex = 1;
     int nameCounter = 0;
     llvm::StringSet<> usedNames;
-    IRFunction* currentFunction = nullptr;
+    Function* currentFunction = nullptr;
 };
 
 } // namespace delta

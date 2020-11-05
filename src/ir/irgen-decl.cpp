@@ -6,7 +6,7 @@
 
 using namespace delta;
 
-IRFunction* IRGenerator::getFunctionProto(const FunctionDecl& decl) {
+Function* IRGenerator::getFunctionProto(const FunctionDecl& decl) {
     auto mangledName = mangleFunctionDecl(decl);
 
     for (auto* function : module->functions) {
@@ -15,15 +15,15 @@ IRFunction* IRGenerator::getFunctionProto(const FunctionDecl& decl) {
         }
     }
 
-    auto params = map(decl.getParams(), [](const ParamDecl& p) { return IRParam{ValueKind::IRParam, getILType(p.getType()), p.getName()}; });
+    auto params = map(decl.getParams(), [](const ParamDecl& p) { return Parameter{ValueKind::Parameter, getILType(p.getType()), p.getName()}; });
 
     if (decl.isMethodDecl()) {
-        params.insert(params.begin(), IRParam{ValueKind::IRParam, getILType(decl.getTypeDecl()->getType().getPointerTo()), "this"});
+        params.insert(params.begin(), Parameter{ValueKind::Parameter, getILType(decl.getTypeDecl()->getType().getPointerTo()), "this"});
     }
 
     auto returnType = getILType(decl.isMain() ? Type::getInt() : decl.getReturnType());
-    auto function = new IRFunction{
-        ValueKind::IRFunction, mangledName, returnType, std::move(params), {}, decl.isExtern(), decl.isVariadic(), decl.getLocation(),
+    auto function = new Function{
+        ValueKind::Function, mangledName, returnType, std::move(params), {}, decl.isExtern(), decl.isVariadic(), decl.getLocation(),
     };
     module->functions.push_back(function);
 
@@ -37,11 +37,11 @@ IRFunction* IRGenerator::getFunctionProto(const FunctionDecl& decl) {
     return function;
 }
 
-void IRGenerator::emitFunctionBody(const FunctionDecl& decl, IRFunction& function) {
+void IRGenerator::emitFunctionBody(const FunctionDecl& decl, Function& function) {
     nameCounter = 0;
     usedNames.clear();
     currentFunction = &function;
-    setInsertPoint(new IRBasicBlock("", &function));
+    setInsertPoint(new Block("", &function));
     beginScope();
 
     auto arg = function.params.begin();
@@ -69,7 +69,7 @@ void IRGenerator::emitFunctionBody(const FunctionDecl& decl, IRFunction& functio
 
     // TODO: Remove unreachable final block here instead of emitting a dummy return void.
     //       Currently the LLVM backend handles the removal.
-    if (insertBlock->insts.empty() || !llvm::isa<IRReturnInst>(insertBlock->insts.back())) {
+    if (insertBlock->insts.empty() || !llvm::isa<ReturnInst>(insertBlock->insts.back())) {
         createReturn(decl.isMain() ? createConstantInt(Type::getInt(), 0) : nullptr);
     }
 }
@@ -82,7 +82,7 @@ void IRGenerator::emitFunctionDecl(const FunctionDecl& decl) {
     }
 }
 
-IRValue* IRGenerator::emitVarDecl(const VarDecl& decl) {
+Value* IRGenerator::emitVarDecl(const VarDecl& decl) {
     if (decl.getName() == "this") {
         return getThis();
     }
@@ -92,11 +92,11 @@ IRValue* IRGenerator::emitVarDecl(const VarDecl& decl) {
     }
 
     ASSERT(decl.getInitializer());
-    IRValue* value = emitExpr(*decl.getInitializer());
+    Value* value = emitExpr(*decl.getInitializer());
 
     if (decl.getType().isMutable()) {
         // TODO(ir) : add createGlobalVariable
-        module->globalVariables.push_back(new IRGlobalVariable{ValueKind::IRGlobalVariable, value, decl.getName()});
+        module->globalVariables.push_back(new GlobalVariable{ValueKind::GlobalVariable, value, decl.getName()});
         value = module->globalVariables.back();
     }
 

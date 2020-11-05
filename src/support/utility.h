@@ -15,11 +15,18 @@
 
 #ifndef NDEBUG
 #define ASSERT(condition, ...) assert(condition)
-#define ASSERT_EQUAL(a, b) if (!((a) == (b))) { llvm::errs() << "ASSERTION FAILED: " << #a << " == " << #b << " at " << __FILE__ << ":" << __LINE__ << '\n'; DEBUG_PRINT(a); DEBUG_PRINT(b); }
+#define ASSERT_EQUAL(a, b) \
+    if (!((a) == (b))) { \
+        llvm::errs() << "ASSERTION FAILED: " << #a << " == " << #b << " at " << __FILE__ << ":" << __LINE__ << '\n'; \
+        DEBUG_PRINT(a); \
+        DEBUG_PRINT(b); \
+    }
 #else
 // Prevent unused variable warnings without evaluating the condition values.
 #define ASSERT(condition, ...) ((void) sizeof(condition))
-#define ASSERT_EQUAL(a, b) ((void) sizeof(a)); ((void) sizeof(b))
+#define ASSERT_EQUAL(a, b) \
+    ((void) sizeof(a)); \
+    ((void) sizeof(b))
 #endif
 
 namespace delta {

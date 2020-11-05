@@ -96,7 +96,7 @@ llvm::Type* LLVMGenerator::getLLVMType(IRType* type, SourceLocation location) {
 }
 
 // TODO(ir): rename all "IRxxx decl"
-llvm::Function* LLVMGenerator::getFunctionProto(const IRFunction& decl) {
+llvm::Function* LLVMGenerator::getFunctionProto(const Function& decl) {
     if (auto* function = module->getFunction(decl.mangledName)) return function;
 
     llvm::SmallVector<llvm::Type*, 16> paramTypes;
@@ -126,7 +126,7 @@ llvm::Function* LLVMGenerator::getFunctionProto(const IRFunction& decl) {
 
 // TODO(ir): rename all irfunction decls to "function" or "irfunction" or "intermediatefunction"
 // TODO(ir): change params to be pointers, rename decl
-void LLVMGenerator::codegenFunctionBody(const IRFunction& decl, llvm::Function& function) {
+void LLVMGenerator::codegenFunctionBody(const Function& decl, llvm::Function& function) {
     llvm::IRBuilder<>::InsertPointGuard insertPointGuard(builder);
 
     auto arg = function.arg_begin();
@@ -150,7 +150,7 @@ void LLVMGenerator::codegenFunctionBody(const IRFunction& decl, llvm::Function& 
     }
 }
 
-void LLVMGenerator::codegenFunction(const IRFunction& decl) {
+void LLVMGenerator::codegenFunction(const Function& decl) {
     llvm::Function* function = getFunctionProto(decl);
 
     if (!decl.isExtern && function->empty()) {
@@ -193,7 +193,7 @@ llvm::StructType* LLVMGenerator::codegenTypeDecl(IRStructType* type) {
 // TODO(ir): Rename "expr" to "value" or "instruction" in llvm/. Rename "codegen" to "build"?
 // TODO(ir): add ir tests?
 
-llvm::BasicBlock* LLVMGenerator::getBasicBlock(const IRBasicBlock* block) {
+llvm::BasicBlock* LLVMGenerator::getBasicBlock(const Block* block) {
     auto it = generatedBlocks.find(block);
     if (it != generatedBlocks.end()) return it->second;
 
@@ -203,7 +203,7 @@ llvm::BasicBlock* LLVMGenerator::getBasicBlock(const IRBasicBlock* block) {
 }
 
 // TODO(ir) rename instruction param
-llvm::Value* LLVMGenerator::codegenExpr(const IRValue* instruction) {
+llvm::Value* LLVMGenerator::codegenExpr(const Value* instruction) {
     auto it = generatedValues.find(instruction);
     if (it != generatedValues.end()) return it->second;
     auto value = codegenExprUncached(instruction);
@@ -213,21 +213,21 @@ llvm::Value* LLVMGenerator::codegenExpr(const IRValue* instruction) {
 
 // TODO(ir): find better name
 // TODO(ir): refactor cases into functions
-llvm::Value* LLVMGenerator::codegenExprUncached(const IRValue* instruction) {
+llvm::Value* LLVMGenerator::codegenExprUncached(const Value* instruction) {
     switch (instruction->kind) {
         // TODO(ir)
-        case ValueKind::IRInstruction: {
-            auto inst = llvm::cast<IRInstruction>(instruction);
-            llvm_unreachable("unhandled IRInstruction");
-            // TODO(ir): IRInstruction shouldn't be an IRValue/instruction because these are always unhandled?
+        case ValueKind::Instruction: {
+            auto inst = llvm::cast<Instruction>(instruction);
+            llvm_unreachable("unhandled Instruction");
+            // TODO(ir): Instruction shouldn't be an Value/instruction because these are always unhandled?
             return nullptr;
         }
-        case ValueKind::IRAllocaInst: {
-            auto inst = llvm::cast<IRAllocaInst>(instruction);
+        case ValueKind::AllocaInst: {
+            auto inst = llvm::cast<AllocaInst>(instruction);
             return builder.CreateAlloca(getLLVMType(inst->allocatedType), nullptr, inst->name);
         }
-        case ValueKind::IRReturnInst: {
-            auto inst = llvm::cast<IRReturnInst>(instruction);
+        case ValueKind::ReturnInst: {
+            auto inst = llvm::cast<ReturnInst>(instruction);
             if (inst->value) {
                 builder.CreateRet(codegenExpr(inst->value));
             } else {
@@ -235,21 +235,21 @@ llvm::Value* LLVMGenerator::codegenExprUncached(const IRValue* instruction) {
             }
             return nullptr;
         }
-        case ValueKind::IRBranchInst: {
-            auto inst = llvm::cast<IRBranchInst>(instruction);
+        case ValueKind::BranchInst: {
+            auto inst = llvm::cast<BranchInst>(instruction);
             builder.CreateBr(getBasicBlock(inst->destination));
             return nullptr;
         }
-        case ValueKind::IRConditionalBranchInst: {
-            auto inst = llvm::cast<IRConditionalBranchInst>(instruction);
+        case ValueKind::CondBranchInst: {
+            auto inst = llvm::cast<CondBranchInst>(instruction);
             auto condition = codegenExpr(inst->condition);
             auto trueBlock = getBasicBlock(inst->trueBlock);
             auto falseBlock = getBasicBlock(inst->falseBlock);
             builder.CreateCondBr(condition, trueBlock, falseBlock);
             return nullptr;
         }
-        case ValueKind::IRPhiInst: {
-            auto inst = llvm::cast<IRPhiInst>(instruction);
+        case ValueKind::PhiInst: {
+            auto inst = llvm::cast<PhiInst>(instruction);
             auto type = getLLVMType(inst->valuesAndPredecessors[0].first->getType());
             auto phi = builder.CreatePHI(type, (unsigned) inst->valuesAndPredecessors.size(), inst->name);
             for (auto& p : inst->valuesAndPredecessors) {
@@ -259,8 +259,8 @@ llvm::Value* LLVMGenerator::codegenExprUncached(const IRValue* instruction) {
             }
             return phi;
         }
-        case ValueKind::IRSwitchInst: {
-            auto inst = llvm::cast<IRSwitchInst>(instruction);
+        case ValueKind::SwitchInst: {
+            auto inst = llvm::cast<SwitchInst>(instruction);
             auto condition = codegenExpr(inst->condition);
             auto cases = map(inst->cases, [&](auto& p) {
                 auto value = llvm::cast<llvm::ConstantInt>(codegenExpr(p.first));
@@ -274,37 +274,37 @@ llvm::Value* LLVMGenerator::codegenExprUncached(const IRValue* instruction) {
             }
             return nullptr;
         }
-        case ValueKind::IRLoadInst: {
-            auto inst = llvm::cast<IRLoadInst>(instruction);
+        case ValueKind::LoadInst: {
+            auto inst = llvm::cast<LoadInst>(instruction);
             return builder.CreateLoad(codegenExpr(inst->value), inst->name);
         }
-        case ValueKind::IRStoreInst: {
-            auto inst = llvm::cast<IRStoreInst>(instruction);
+        case ValueKind::StoreInst: {
+            auto inst = llvm::cast<StoreInst>(instruction);
             auto value = codegenExpr(inst->value);
             auto pointer = codegenExpr(inst->pointer);
             builder.CreateStore(value, pointer);
             return nullptr;
         }
-        case ValueKind::IRInsertValueInst: {
-            auto inst = llvm::cast<IRInsertValueInst>(instruction);
+        case ValueKind::InsertInst: {
+            auto inst = llvm::cast<InsertInst>(instruction);
             auto aggregate = codegenExpr(inst->aggregate);
             auto value = codegenExpr(inst->value);
             return builder.CreateInsertValue(aggregate, value, inst->index);
         }
-        case ValueKind::IRExtractValueInst: {
-            auto inst = llvm::cast<IRExtractValueInst>(instruction);
+        case ValueKind::ExtractInst: {
+            auto inst = llvm::cast<ExtractInst>(instruction);
             auto aggregate = codegenExpr(inst->aggregate);
             return builder.CreateExtractValue(aggregate, inst->index, inst->name);
         }
-        case ValueKind::IRCallInst: {
-            auto inst = llvm::cast<IRCallInst>(instruction);
+        case ValueKind::CallInst: {
+            auto inst = llvm::cast<CallInst>(instruction);
             auto function = codegenExpr(inst->function);
             auto args = map(inst->args, [&](auto* arg) { return codegenExpr(arg); });
             ASSERT(function->getType()->isFunctionTy() || (function->getType()->isPointerTy() && function->getType()->getPointerElementType()->isFunctionTy()));
             return builder.CreateCall(function, args);
         }
-        case ValueKind::IRBinaryOp: {
-            auto inst = llvm::cast<IRBinaryOp>(instruction);
+        case ValueKind::BinaryInst: {
+            auto inst = llvm::cast<BinaryInst>(instruction);
             auto left = codegenExpr(inst->left);
             auto right = codegenExpr(inst->right);
             auto leftType = inst->left->getType();
@@ -379,8 +379,8 @@ llvm::Value* LLVMGenerator::codegenExprUncached(const IRValue* instruction) {
                     llvm_unreachable("invalid binary operation");
             }
         }
-        case ValueKind::IRUnaryOp: {
-            auto inst = llvm::cast<IRUnaryOp>(instruction);
+        case ValueKind::UnaryInst: {
+            auto inst = llvm::cast<UnaryInst>(instruction);
             auto operand = codegenExpr(inst->operand);
             switch (inst->op) {
                 case Token::Minus:
@@ -391,19 +391,19 @@ llvm::Value* LLVMGenerator::codegenExprUncached(const IRValue* instruction) {
                     llvm_unreachable("invalid unary operation");
             }
         }
-        case ValueKind::IRGetElementPtr: {
-            auto inst = llvm::cast<IRGetElementPtr>(instruction);
+        case ValueKind::GEPInst: {
+            auto inst = llvm::cast<GEPInst>(instruction);
             auto pointer = codegenExpr(inst->pointer);
             auto indexes = map(inst->indexes, [&](auto* index) { return codegenExpr(index); });
             return builder.CreateInBoundsGEP(pointer, indexes, inst->name);
         }
-        case ValueKind::IRConstGEP: {
-            auto inst = llvm::cast<IRConstGEP>(instruction);
+        case ValueKind::ConstGEPInst: {
+            auto inst = llvm::cast<ConstGEPInst>(instruction);
             auto pointer = codegenExpr(inst->pointer);
             return builder.CreateConstInBoundsGEP2_32(nullptr, pointer, inst->index0, inst->index1, inst->name);
         }
-        case ValueKind::IRCastInst: {
-            auto inst = llvm::cast<IRCastInst>(instruction);
+        case ValueKind::CastInst: {
+            auto inst = llvm::cast<CastInst>(instruction);
             auto value = codegenExpr(inst->value);
             auto sourceType = inst->value->getType();
             auto type = inst->type;
@@ -433,64 +433,64 @@ llvm::Value* LLVMGenerator::codegenExprUncached(const IRValue* instruction) {
 
             return builder.CreateBitOrPointerCast(value, getLLVMType(type), inst->name);
         }
-        case ValueKind::IRUnreachable: {
+        case ValueKind::UnreachableInst: {
             return builder.CreateUnreachable();
         }
-        case ValueKind::IRSizeof: {
-            auto inst = llvm::cast<IRSizeof>(instruction);
+        case ValueKind::SizeofInst: {
+            auto inst = llvm::cast<SizeofInst>(instruction);
             return llvm::ConstantExpr::getSizeOf(getLLVMType(inst->type));
         }
-        case ValueKind::IRBasicBlock: {
-            auto inst = llvm::cast<IRBasicBlock>(instruction);
-            llvm_unreachable("unhandled IRBasicBlock");
-            // TODO(ir): basicblock shouldn't be an IRValue/instruction because these are always unhandled?
+        case ValueKind::Block: {
+            auto inst = llvm::cast<Block>(instruction);
+            llvm_unreachable("unhandled Block");
+            // TODO(ir): basicblock shouldn't be an Value/instruction because these are always unhandled?
             return nullptr;
         }
-        case ValueKind::IRFunction: {
-            auto inst = llvm::cast<IRFunction>(instruction);
+        case ValueKind::Function: {
+            auto inst = llvm::cast<Function>(instruction);
             return getFunctionProto(*inst);
         }
-        case ValueKind::IRParam:
+        case ValueKind::Parameter:
             return generatedValues.at(instruction);
 
-        case ValueKind::IRGlobalVariable: {
-            auto inst = llvm::cast<IRGlobalVariable>(instruction);
+        case ValueKind::GlobalVariable: {
+            auto inst = llvm::cast<GlobalVariable>(instruction);
             // TODO(ir): Match previous global constant inlining behavior.
             auto linkage = inst->value ? llvm::GlobalValue::PrivateLinkage : llvm::GlobalValue::ExternalLinkage;
             auto initializer = inst->value ? llvm::cast<llvm::Constant>(codegenExpr(inst->value)) : nullptr;
             return new llvm::GlobalVariable(*module, getLLVMType(inst->value->getType()), false, linkage, initializer, inst->name);
         }
-        case ValueKind::IRConstantString: {
-            auto inst = llvm::cast<IRConstantString>(instruction);
+        case ValueKind::ConstantString: {
+            auto inst = llvm::cast<ConstantString>(instruction);
             return builder.CreateGlobalStringPtr(inst->value);
         }
-        case ValueKind::IRConstantInt: {
-            auto inst = llvm::cast<IRConstantInt>(instruction);
+        case ValueKind::ConstantInt: {
+            auto inst = llvm::cast<ConstantInt>(instruction);
             auto type = getLLVMType(inst->type);
             return llvm::ConstantInt::get(type, inst->value.extOrTrunc(type->getIntegerBitWidth()));
         }
-        case ValueKind::IRConstantFP: {
-            auto inst = llvm::cast<IRConstantFP>(instruction);
+        case ValueKind::ConstantFP: {
+            auto inst = llvm::cast<ConstantFP>(instruction);
             llvm::SmallString<128> buffer;
             inst->value.toString(buffer);
             return llvm::ConstantFP::get(getLLVMType(inst->type), buffer);
         }
-        case ValueKind::IRConstantBool: {
-            auto inst = llvm::cast<IRConstantBool>(instruction);
+        case ValueKind::ConstantBool: {
+            auto inst = llvm::cast<ConstantBool>(instruction);
             return inst->value ? llvm::ConstantInt::getTrue(ctx) : llvm::ConstantInt::getFalse(ctx);
         }
-        case ValueKind::IRConstantNull: {
-            auto inst = llvm::cast<IRConstantNull>(instruction);
+        case ValueKind::ConstantNull: {
+            auto inst = llvm::cast<ConstantNull>(instruction);
             return llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(getLLVMType(inst->type)));
         }
-        case ValueKind::IRUndefined: {
-            auto inst = llvm::cast<IRUndefined>(instruction);
+        case ValueKind::Undefined: {
+            auto inst = llvm::cast<Undefined>(instruction);
             return llvm::UndefValue::get(getLLVMType(inst->type));
         }
         case ValueKind::IRModule: {
             auto inst = llvm::cast<IRModule>(instruction);
             llvm_unreachable("unhandled IRModule");
-            // TODO(ir): IRModule shouldn't be an IRValue/instruction because these are always unhandled?
+            // TODO(ir): IRModule shouldn't be an Value/instruction because these are always unhandled?
             return nullptr;
         }
     }

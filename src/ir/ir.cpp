@@ -9,7 +9,7 @@ using namespace delta;
 // TODO(ir): Rename IRxxxInst to simply xxxInst, for consistency with xxxDecl, xxxStmt, and xxxExpr.
 // TODO(ir): add check_matches_ir?
 
-IRBasicBlock::IRBasicBlock(std::string name, delta::IRFunction* parent) : IRValue{ValueKind::IRBasicBlock}, name(std::move(name)), parent(parent) {
+Block::Block(std::string name, delta::Function* parent) : Value{ValueKind::Block}, name(std::move(name)), parent(parent) {
     if (parent) {
         parent->body.push_back(this);
     }
@@ -94,44 +94,44 @@ IRType* delta::getILType(Type astType) {
     return irType;
 }
 
-// TODO(ir) store type in IRValue?
-IRType* IRValue::getType() const {
+// TODO(ir) store type in Value?
+IRType* Value::getType() const {
     switch (kind) {
-        case ValueKind::IRInstruction:
-            llvm_unreachable("unhandled IRInstruction");
-        case ValueKind::IRAllocaInst:
-            return llvm::cast<IRAllocaInst>(this)->allocatedType->getPointerTo();
-        case ValueKind::IRReturnInst:
-            llvm_unreachable("unhandled IRReturnInst");
-        case ValueKind::IRBranchInst:
-            llvm_unreachable("unhandled IRBranchInst");
-        case ValueKind::IRConditionalBranchInst:
-            llvm_unreachable("unhandled IRConditionalBranchInst");
-        case ValueKind::IRPhiInst:
+        case ValueKind::Instruction:
+            llvm_unreachable("unhandled Instruction");
+        case ValueKind::AllocaInst:
+            return llvm::cast<AllocaInst>(this)->allocatedType->getPointerTo();
+        case ValueKind::ReturnInst:
+            llvm_unreachable("unhandled ReturnInst");
+        case ValueKind::BranchInst:
+            llvm_unreachable("unhandled BranchInst");
+        case ValueKind::CondBranchInst:
+            llvm_unreachable("unhandled CondBranchInst");
+        case ValueKind::PhiInst:
             // TODO(ir): Check incoming values have same type
-            return llvm::cast<IRPhiInst>(this)->valuesAndPredecessors[0].first->getType();
-        case ValueKind::IRSwitchInst:
-            llvm_unreachable("unhandled IRSwitchInst");
-        case ValueKind::IRLoadInst:
-            return llvm::cast<IRLoadInst>(this)->value->getType()->getPointee();
-        case ValueKind::IRStoreInst:
-            llvm_unreachable("unhandled IRStoreInst");
-        case ValueKind::IRInsertValueInst:
-            return llvm::cast<IRInsertValueInst>(this)->aggregate->getType();
-        case ValueKind::IRExtractValueInst: {
-            auto extract = llvm::cast<IRExtractValueInst>(this);
+            return llvm::cast<PhiInst>(this)->valuesAndPredecessors[0].first->getType();
+        case ValueKind::SwitchInst:
+            llvm_unreachable("unhandled SwitchInst");
+        case ValueKind::LoadInst:
+            return llvm::cast<LoadInst>(this)->value->getType()->getPointee();
+        case ValueKind::StoreInst:
+            llvm_unreachable("unhandled StoreInst");
+        case ValueKind::InsertInst:
+            return llvm::cast<InsertInst>(this)->aggregate->getType();
+        case ValueKind::ExtractInst: {
+            auto extract = llvm::cast<ExtractInst>(this);
             return extract->aggregate->getType()->getFields()[extract->index];
         }
-        case ValueKind::IRCallInst: {
-            auto functionType = llvm::cast<IRCallInst>(this)->function->getType();
+        case ValueKind::CallInst: {
+            auto functionType = llvm::cast<CallInst>(this)->function->getType();
             if (functionType->isPointerType()) {
                 return functionType->getPointee()->getReturnType();
             } else {
                 return functionType->getReturnType();
             }
         }
-        case ValueKind::IRBinaryOp: {
-            auto binary = llvm::cast<IRBinaryOp>(this);
+        case ValueKind::BinaryInst: {
+            auto binary = llvm::cast<BinaryInst>(this);
             switch (binary->op) {
                 case Token::AndAnd:
                 case Token::OrOr:
@@ -151,8 +151,8 @@ IRType* IRValue::getType() const {
                     return binary->left->getType();
             }
         }
-        case ValueKind::IRUnaryOp: {
-            auto unary = llvm::cast<IRUnaryOp>(this);
+        case ValueKind::UnaryInst: {
+            auto unary = llvm::cast<UnaryInst>(this);
             switch (unary->op) {
                 case Token::Not:
                     return getILType(Type::getBool());
@@ -160,8 +160,8 @@ IRType* IRValue::getType() const {
                     return unary->operand->getType();
             }
         }
-        case ValueKind::IRGetElementPtr: {
-            auto gep = llvm::cast<IRGetElementPtr>(this);
+        case ValueKind::GEPInst: {
+            auto gep = llvm::cast<GEPInst>(this);
             auto baseType = gep->pointer->getType();
             for (auto index : llvm::ArrayRef(gep->indexes).drop_front()) {
                 switch (baseType->getPointee()->kind) {
@@ -178,8 +178,8 @@ IRType* IRValue::getType() const {
             }
             return baseType;
         }
-        case ValueKind::IRConstGEP: {
-            auto gep = llvm::cast<IRConstGEP>(this);
+        case ValueKind::ConstGEPInst: {
+            auto gep = llvm::cast<ConstGEPInst>(this);
             auto baseType = gep->pointer->getType();
             switch (baseType->getPointee()->kind) {
                 case IRTypeKind::IRStructType: {
@@ -199,36 +199,36 @@ IRType* IRValue::getType() const {
             }
             return baseType;
         }
-        case ValueKind::IRCastInst:
-            return llvm::cast<IRCastInst>(this)->type;
-        case ValueKind::IRUnreachable:
-            llvm_unreachable("unhandled IRUnreachable");
-        case ValueKind::IRSizeof:
+        case ValueKind::CastInst:
+            return llvm::cast<CastInst>(this)->type;
+        case ValueKind::UnreachableInst:
+            llvm_unreachable("unhandled UnreachableInst");
+        case ValueKind::SizeofInst:
             return getILType(Type::getInt());
-        case ValueKind::IRBasicBlock:
-            llvm_unreachable("unhandled IRBasicBlock");
-        case ValueKind::IRFunction: {
-            auto function = llvm::cast<IRFunction>(this);
+        case ValueKind::Block:
+            llvm_unreachable("unhandled Block");
+        case ValueKind::Function: {
+            auto function = llvm::cast<Function>(this);
             auto paramTypes = map(function->params, [](auto& p) { return p.type; });
             return (new IRFunctionType{IRTypeKind::IRFunctionType, function->returnType, std::move(paramTypes)})->getPointerTo();
             // TODO(ir) cache?
         }
-        case ValueKind::IRParam:
-            return llvm::cast<IRParam>(this)->type;
-        case ValueKind::IRGlobalVariable:
-            return llvm::cast<IRGlobalVariable>(this)->value->getType()->getPointerTo();
-        case ValueKind::IRConstantString:
+        case ValueKind::Parameter:
+            return llvm::cast<Parameter>(this)->type;
+        case ValueKind::GlobalVariable:
+            return llvm::cast<GlobalVariable>(this)->value->getType()->getPointerTo();
+        case ValueKind::ConstantString:
             return getILType(Type::getChar(Mutability::Const).getPointerTo());
-        case ValueKind::IRConstantInt:
-            return llvm::cast<IRConstantInt>(this)->type;
-        case ValueKind::IRConstantFP:
-            return llvm::cast<IRConstantFP>(this)->type;
-        case ValueKind::IRConstantBool:
+        case ValueKind::ConstantInt:
+            return llvm::cast<ConstantInt>(this)->type;
+        case ValueKind::ConstantFP:
+            return llvm::cast<ConstantFP>(this)->type;
+        case ValueKind::ConstantBool:
             return getILType(Type::getBool());
-        case ValueKind::IRConstantNull:
-            return llvm::cast<IRConstantNull>(this)->type;
-        case ValueKind::IRUndefined:
-            return llvm::cast<IRUndefined>(this)->type;
+        case ValueKind::ConstantNull:
+            return llvm::cast<ConstantNull>(this)->type;
+        case ValueKind::Undefined:
+            return llvm::cast<Undefined>(this)->type;
         case ValueKind::IRModule:
             llvm_unreachable("unhandled IRModule");
     }
@@ -236,68 +236,68 @@ IRType* IRValue::getType() const {
     llvm_unreachable("unhandled instruction kind");
 }
 
-std::string IRValue::getName() const {
+std::string Value::getName() const {
     switch (kind) {
-        case ValueKind::IRInstruction:
-            llvm_unreachable("unhandled IRInstruction");
-        case ValueKind::IRAllocaInst:
-            return llvm::cast<IRAllocaInst>(this)->name;
-        case ValueKind::IRReturnInst:
-            llvm_unreachable("unhandled IRReturnInst");
-        case ValueKind::IRBranchInst:
-            llvm_unreachable("unhandled IRBranchInst");
-        case ValueKind::IRConditionalBranchInst:
-            llvm_unreachable("unhandled IRConditionalBranchInst");
-        case ValueKind::IRPhiInst:
-            return llvm::cast<IRPhiInst>(this)->name;
-        case ValueKind::IRSwitchInst:
-            llvm_unreachable("unhandled IRSwitchInst");
-        case ValueKind::IRLoadInst:
-            return llvm::cast<IRLoadInst>(this)->name;
-        case ValueKind::IRStoreInst:
-            llvm_unreachable("unhandled IRStoreInst");
-        case ValueKind::IRInsertValueInst:
-            return llvm::cast<IRInsertValueInst>(this)->name;
-        case ValueKind::IRExtractValueInst:
-            return llvm::cast<IRExtractValueInst>(this)->name;
-        case ValueKind::IRCallInst:
-            return llvm::cast<IRCallInst>(this)->name;
-        case ValueKind::IRBinaryOp:
-            return llvm::cast<IRBinaryOp>(this)->name;
-        case ValueKind::IRUnaryOp:
-            return llvm::cast<IRUnaryOp>(this)->name;
-        case ValueKind::IRGetElementPtr:
-            return llvm::cast<IRGetElementPtr>(this)->name;
-        case ValueKind::IRConstGEP:
-            return llvm::cast<IRConstGEP>(this)->name;
-        case ValueKind::IRCastInst:
-            return llvm::cast<IRCastInst>(this)->name;
-        case ValueKind::IRUnreachable:
-            llvm_unreachable("unhandled IRUnreachable");
-        case ValueKind::IRSizeof:
-            return llvm::cast<IRSizeof>(this)->name;
-        case ValueKind::IRBasicBlock:
-            return llvm::cast<IRBasicBlock>(this)->name;
-        case ValueKind::IRFunction:
-            return llvm::cast<IRFunction>(this)->mangledName;
-        case ValueKind::IRParam:
-            return llvm::cast<IRParam>(this)->name;
-        case ValueKind::IRGlobalVariable:
-            return llvm::cast<IRGlobalVariable>(this)->name;
-        case ValueKind::IRConstantString:
-            return '"' + llvm::cast<IRConstantString>(this)->value + '"';
-        case ValueKind::IRConstantInt:
-            return llvm::cast<IRConstantInt>(this)->value.toString(10);
-        case ValueKind::IRConstantFP: {
+        case ValueKind::Instruction:
+            llvm_unreachable("unhandled Instruction");
+        case ValueKind::AllocaInst:
+            return llvm::cast<AllocaInst>(this)->name;
+        case ValueKind::ReturnInst:
+            llvm_unreachable("unhandled ReturnInst");
+        case ValueKind::BranchInst:
+            llvm_unreachable("unhandled BranchInst");
+        case ValueKind::CondBranchInst:
+            llvm_unreachable("unhandled CondBranchInst");
+        case ValueKind::PhiInst:
+            return llvm::cast<PhiInst>(this)->name;
+        case ValueKind::SwitchInst:
+            llvm_unreachable("unhandled SwitchInst");
+        case ValueKind::LoadInst:
+            return llvm::cast<LoadInst>(this)->name;
+        case ValueKind::StoreInst:
+            llvm_unreachable("unhandled StoreInst");
+        case ValueKind::InsertInst:
+            return llvm::cast<InsertInst>(this)->name;
+        case ValueKind::ExtractInst:
+            return llvm::cast<ExtractInst>(this)->name;
+        case ValueKind::CallInst:
+            return llvm::cast<CallInst>(this)->name;
+        case ValueKind::BinaryInst:
+            return llvm::cast<BinaryInst>(this)->name;
+        case ValueKind::UnaryInst:
+            return llvm::cast<UnaryInst>(this)->name;
+        case ValueKind::GEPInst:
+            return llvm::cast<GEPInst>(this)->name;
+        case ValueKind::ConstGEPInst:
+            return llvm::cast<ConstGEPInst>(this)->name;
+        case ValueKind::CastInst:
+            return llvm::cast<CastInst>(this)->name;
+        case ValueKind::UnreachableInst:
+            llvm_unreachable("unhandled UnreachableInst");
+        case ValueKind::SizeofInst:
+            return llvm::cast<SizeofInst>(this)->name;
+        case ValueKind::Block:
+            return llvm::cast<Block>(this)->name;
+        case ValueKind::Function:
+            return llvm::cast<Function>(this)->mangledName;
+        case ValueKind::Parameter:
+            return llvm::cast<Parameter>(this)->name;
+        case ValueKind::GlobalVariable:
+            return llvm::cast<GlobalVariable>(this)->name;
+        case ValueKind::ConstantString:
+            return '"' + llvm::cast<ConstantString>(this)->value + '"';
+        case ValueKind::ConstantInt:
+            return llvm::cast<ConstantInt>(this)->value.toString(10);
+        case ValueKind::ConstantFP: {
             llvm::SmallString<128> buffer;
-            llvm::cast<IRConstantFP>(this)->value.toString(buffer);
+            llvm::cast<ConstantFP>(this)->value.toString(buffer);
             return buffer.str();
         }
-        case ValueKind::IRConstantBool:
-            return llvm::cast<IRConstantBool>(this)->value ? "true" : "false";
-        case ValueKind::IRConstantNull:
+        case ValueKind::ConstantBool:
+            return llvm::cast<ConstantBool>(this)->value ? "true" : "false";
+        case ValueKind::ConstantNull:
             return "null";
-        case ValueKind::IRUndefined:
+        case ValueKind::Undefined:
             return "undefined";
         case ValueKind::IRModule:
             llvm_unreachable("unhandled IRModule");
@@ -306,15 +306,15 @@ std::string IRValue::getName() const {
     llvm_unreachable("unhandled instruction kind");
 }
 
-static std::unordered_map<const IRValue*, std::string> generatedNames; // TODO(ir) ugly global
+static std::unordered_map<const Value*, std::string> generatedNames; // TODO(ir) ugly global
 static int localNameCounter = 0;
 
-static bool isConstant(const IRValue* inst) {
-    return inst->kind == ValueKind::IRConstantInt || inst->kind == ValueKind::IRConstantFP || inst->kind == ValueKind::IRConstantString ||
-           inst->kind == ValueKind::IRUndefined || inst->kind == ValueKind::IRConstantNull || inst->kind == ValueKind::IRConstantBool;
+static bool isConstant(const Value* inst) {
+    return inst->kind == ValueKind::ConstantInt || inst->kind == ValueKind::ConstantFP || inst->kind == ValueKind::ConstantString ||
+           inst->kind == ValueKind::Undefined || inst->kind == ValueKind::ConstantNull || inst->kind == ValueKind::ConstantBool;
 }
 
-static std::string formatName(const IRValue* inst) {
+static std::string formatName(const Value* inst) {
     std::string str;
     llvm::raw_string_ostream s(str);
 
@@ -339,44 +339,44 @@ static std::string formatName(const IRValue* inst) {
     return std::move(s.str());
 }
 
-static std::string formatTypeAndName(const IRValue* inst) {
+static std::string formatTypeAndName(const Value* inst) {
     std::string str;
     llvm::raw_string_ostream s(str);
-    if (!isConstant(inst) && inst->kind != ValueKind::IRBasicBlock) {
+    if (!isConstant(inst) && inst->kind != ValueKind::Block) {
         s << inst->getType() << " ";
     }
     s << formatName(inst);
     return std::move(s.str());
 }
 
-void IRValue::print(llvm::raw_ostream& stream) const {
+void Value::print(llvm::raw_ostream& stream) const {
     const auto indent = "    ";
 
     switch (this->kind) {
-        case ValueKind::IRInstruction:
-            llvm_unreachable("unhandled IRInstruction");
-        case ValueKind::IRAllocaInst: {
-            auto alloca = llvm::cast<IRAllocaInst>(this);
+        case ValueKind::Instruction:
+            llvm_unreachable("unhandled Instruction");
+        case ValueKind::AllocaInst: {
+            auto alloca = llvm::cast<AllocaInst>(this);
             stream << indent << formatTypeAndName(alloca) << " = alloca " << alloca->allocatedType;
             break;
         }
-        case ValueKind::IRReturnInst: {
-            auto returnInst = llvm::cast<IRReturnInst>(this);
+        case ValueKind::ReturnInst: {
+            auto returnInst = llvm::cast<ReturnInst>(this);
             stream << indent << "return " << (returnInst->value ? formatName(returnInst->value) : "void");
             break;
         }
-        case ValueKind::IRBranchInst: {
-            auto branch = llvm::cast<IRBranchInst>(this);
+        case ValueKind::BranchInst: {
+            auto branch = llvm::cast<BranchInst>(this);
             stream << indent << "goto " << formatName(branch->destination);
             break;
         }
-        case ValueKind::IRConditionalBranchInst: {
-            auto condBranch = llvm::cast<IRConditionalBranchInst>(this);
+        case ValueKind::CondBranchInst: {
+            auto condBranch = llvm::cast<CondBranchInst>(this);
             stream << indent << "goto " << formatName(condBranch->condition) << " ? " << condBranch->trueBlock->name << " : " << condBranch->falseBlock->name;
             break;
         }
-        case ValueKind::IRPhiInst: {
-            auto phi = llvm::cast<IRPhiInst>(this);
+        case ValueKind::PhiInst: {
+            auto phi = llvm::cast<PhiInst>(this);
             stream << indent << formatTypeAndName(phi) << " = phi ";
             for (auto& p : phi->valuesAndPredecessors) {
                 stream << "[" << formatName(p.first) << ", " << p.second->name << "]";
@@ -384,8 +384,8 @@ void IRValue::print(llvm::raw_ostream& stream) const {
             }
             break;
         }
-        case ValueKind::IRSwitchInst: {
-            auto switchInst = llvm::cast<IRSwitchInst>(this);
+        case ValueKind::SwitchInst: {
+            auto switchInst = llvm::cast<SwitchInst>(this);
             stream << indent << "switch " << formatName(switchInst->condition) << " {\n";
             for (auto& p : switchInst->cases) {
                 stream << indent << indent << formatName(p.first) << " -> " << p.second->name << "\n";
@@ -393,29 +393,29 @@ void IRValue::print(llvm::raw_ostream& stream) const {
             stream << indent << "}";
             break;
         }
-        case ValueKind::IRLoadInst: {
-            auto load = llvm::cast<IRLoadInst>(this);
+        case ValueKind::LoadInst: {
+            auto load = llvm::cast<LoadInst>(this);
             stream << indent << formatTypeAndName(load) << " = load " << formatName(load->value);
             break;
         }
-        case ValueKind::IRStoreInst: {
-            auto store = llvm::cast<IRStoreInst>(this);
+        case ValueKind::StoreInst: {
+            auto store = llvm::cast<StoreInst>(this);
             stream << indent << "store " << formatName(store->value) << " to " << formatName(store->pointer);
             break;
         }
-        case ValueKind::IRInsertValueInst: {
-            auto insert = llvm::cast<IRInsertValueInst>(this);
+        case ValueKind::InsertInst: {
+            auto insert = llvm::cast<InsertInst>(this);
             stream << indent << formatTypeAndName(insert) << " = insertvalue " << formatName(insert->aggregate) << ", " << insert->index << ", "
                    << formatName(insert->value);
             break;
         }
-        case ValueKind::IRExtractValueInst: {
-            auto extract = llvm::cast<IRExtractValueInst>(this);
+        case ValueKind::ExtractInst: {
+            auto extract = llvm::cast<ExtractInst>(this);
             stream << indent << formatTypeAndName(extract) << " = extractvalue " << formatName(extract->aggregate) << ", " << extract->index;
             break;
         }
-        case ValueKind::IRCallInst: {
-            auto call = llvm::cast<IRCallInst>(this);
+        case ValueKind::CallInst: {
+            auto call = llvm::cast<CallInst>(this);
             stream << indent << formatTypeAndName(call) << " = call " << formatName(call->function) << "(";
             for (auto& arg : call->args) {
                 stream << formatTypeAndName(arg);
@@ -424,45 +424,45 @@ void IRValue::print(llvm::raw_ostream& stream) const {
             stream << ")";
             break;
         }
-        case ValueKind::IRBinaryOp: {
-            auto binaryOp = llvm::cast<IRBinaryOp>(this);
+        case ValueKind::BinaryInst: {
+            auto binaryOp = llvm::cast<BinaryInst>(this);
             stream << indent << formatTypeAndName(binaryOp) << " = " << formatName(binaryOp->left) << " " << binaryOp->op << " " << formatName(binaryOp->right);
             break;
         }
-        case ValueKind::IRUnaryOp: {
-            auto unaryOp = llvm::cast<IRUnaryOp>(this);
+        case ValueKind::UnaryInst: {
+            auto unaryOp = llvm::cast<UnaryInst>(this);
             stream << indent << formatTypeAndName(unaryOp) << " = " << unaryOp->op << formatName(unaryOp->operand);
             break;
         }
-        case ValueKind::IRGetElementPtr: {
-            auto gep = llvm::cast<IRGetElementPtr>(this);
+        case ValueKind::GEPInst: {
+            auto gep = llvm::cast<GEPInst>(this);
             stream << indent << formatTypeAndName(gep) << " = getelementptr " << formatName(gep->pointer);
             for (auto* index : gep->indexes) {
                 stream << ", " << formatName(index);
             }
             break;
         }
-        case ValueKind::IRConstGEP: {
-            auto gep = llvm::cast<IRConstGEP>(this);
+        case ValueKind::ConstGEPInst: {
+            auto gep = llvm::cast<ConstGEPInst>(this);
             stream << indent << formatTypeAndName(gep) << " = getelementptr " << formatName(gep->pointer) << ", " << gep->index0 << ", " << gep->index1;
             break;
         }
-        case ValueKind::IRCastInst: {
-            auto cast = llvm::cast<IRCastInst>(this);
+        case ValueKind::CastInst: {
+            auto cast = llvm::cast<CastInst>(this);
             stream << indent << formatTypeAndName(cast) << " = cast " << formatName(cast->value) << " to " << cast->type;
             break;
         }
-        case ValueKind::IRUnreachable: {
+        case ValueKind::UnreachableInst: {
             stream << indent << "unreachable";
             break;
         }
-        case ValueKind::IRSizeof:
-            llvm_unreachable("unhandled IRSizeof");
-        case ValueKind::IRBasicBlock:
-            llvm_unreachable("handled via IRFunction");
-        case ValueKind::IRFunction: {
+        case ValueKind::SizeofInst:
+            llvm_unreachable("unhandled SizeofInst");
+        case ValueKind::Block:
+            llvm_unreachable("handled via Function");
+        case ValueKind::Function: {
             localNameCounter = 0;
-            auto function = llvm::cast<IRFunction>(this);
+            auto function = llvm::cast<Function>(this);
             stream << "\n";
             if (function->isExtern) stream << "extern ";
             stream << function->returnType << " " << function->mangledName << "(";
@@ -485,26 +485,26 @@ void IRValue::print(llvm::raw_ostream& stream) const {
             }
             break;
         }
-        case ValueKind::IRParam:
+        case ValueKind::Parameter:
             stream << formatTypeAndName(this);
             break;
-        case ValueKind::IRGlobalVariable: {
-            auto globalVariable = llvm::cast<IRGlobalVariable>(this);
+        case ValueKind::GlobalVariable: {
+            auto globalVariable = llvm::cast<GlobalVariable>(this);
             stream << "global " << formatName(globalVariable) << " = " << formatTypeAndName(globalVariable->value);
             break;
         }
-        case ValueKind::IRConstantString:
-            llvm_unreachable("unhandled IRConstantString");
-        case ValueKind::IRConstantInt:
-            llvm_unreachable("unhandled IRConstantInt");
-        case ValueKind::IRConstantFP:
-            llvm_unreachable("unhandled IRConstantFP");
-        case ValueKind::IRConstantBool:
-            llvm_unreachable("unhandled IRConstantBool");
-        case ValueKind::IRConstantNull:
-            llvm_unreachable("unhandled IRConstantNull");
-        case ValueKind::IRUndefined:
-            llvm_unreachable("unhandled IRUndefined");
+        case ValueKind::ConstantString:
+            llvm_unreachable("unhandled ConstantString");
+        case ValueKind::ConstantInt:
+            llvm_unreachable("unhandled ConstantInt");
+        case ValueKind::ConstantFP:
+            llvm_unreachable("unhandled ConstantFP");
+        case ValueKind::ConstantBool:
+            llvm_unreachable("unhandled ConstantBool");
+        case ValueKind::ConstantNull:
+            llvm_unreachable("unhandled ConstantNull");
+        case ValueKind::Undefined:
+            llvm_unreachable("unhandled Undefined");
         case ValueKind::IRModule:
             llvm_unreachable("unhandled IRModule");
     }

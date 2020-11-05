@@ -30,16 +30,16 @@ public:
 
 private:
     // TODO(ir): Rename to codegenInst.
-    llvm::Value* codegenExpr(const IRValue* instruction);
-    llvm::Value* codegenExprUncached(const IRValue* instruction);
-    llvm::BasicBlock* getBasicBlock(const IRBasicBlock* block);
-    llvm::Function* getFunctionProto(const IRFunction& function);
-    void codegenFunction(const IRFunction& function);
+    llvm::Value* codegenExpr(const Value* instruction);
+    llvm::Value* codegenExprUncached(const Value* instruction);
+    llvm::BasicBlock* getBasicBlock(const Block* block);
+    llvm::Function* getFunctionProto(const Function& function);
+    void codegenFunction(const Function& function);
 
 private:
     friend struct LLVMGenScope;
 
-    void codegenFunctionBody(const IRFunction& decl, llvm::Function& function);
+    void codegenFunctionBody(const Function& decl, llvm::Function& function);
     llvm::Type* getLLVMType(IRType* type, SourceLocation location = SourceLocation());
     llvm::Type* getBuiltinType(llvm::StringRef name);
     llvm::Type* getStructType(IRStructType* type);
@@ -47,7 +47,7 @@ private:
 
 private:
     struct FunctionInstantiation {
-        const IRFunction* decl;
+        const Function* decl;
         llvm::Function* function;
     };
 
@@ -56,8 +56,8 @@ private:
     llvm::Module* module = nullptr;
     std::vector<llvm::Module*> generatedModules;
     std::vector<FunctionInstantiation> functionInstantiations;
-    std::unordered_map<const IRBasicBlock*, llvm::BasicBlock*> generatedBlocks;
-    std::unordered_map<const IRValue*, llvm::Value*> generatedValues;
+    std::unordered_map<const Block*, llvm::BasicBlock*> generatedBlocks;
+    std::unordered_map<const Value*, llvm::Value*> generatedValues;
     std::unordered_map<IRType*, llvm::StructType*> structs;
 };
 
