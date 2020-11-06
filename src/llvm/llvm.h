@@ -23,9 +23,8 @@ public:
     std::vector<llvm::Module*> getGeneratedModules() { return std::move(generatedModules); }
 
 private:
-    // TODO(ir): Rename to codegenInst.
-    llvm::Value* codegenExpr(const Value* instruction);
-    llvm::Value* codegenExprUncached(const Value* instruction);
+    llvm::Value* getInst(const Value* value);
+    llvm::Value* codegenInst(const Value* v);
     llvm::BasicBlock* getBasicBlock(const BasicBlock* block);
     llvm::Function* getFunctionProto(const Function& function);
     void codegenFunction(const Function& function);

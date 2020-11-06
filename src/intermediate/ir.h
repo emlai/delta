@@ -132,6 +132,7 @@ enum class ValueKind {
     IRModule,
 };
 
+// TODO(ir) rename to Node or IRNode? value is too generic
 struct Value {
     IRType* getType() const;
     std::string getName() const;
