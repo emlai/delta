@@ -122,8 +122,9 @@ add_dependencies(check FileCheck not)
 
 set(CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR}/cmake-modules)
 
-file(DOWNLOAD https://github.com/llvm/llvm-project/raw/master/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py
-    ${CMAKE_BINARY_DIR}/run-clang-tidy.py)
+file(DOWNLOAD
+    "https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-${LLVM_PACKAGE_VERSION}/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py"
+    "${CMAKE_BINARY_DIR}/run-clang-tidy.py")
 add_custom_target(lint COMMAND "${PROJECT_SOURCE_DIR}/scripts/format.sh" "${CMAKE_BINARY_DIR}" --check)
 add_custom_target(format COMMAND "${PROJECT_SOURCE_DIR}/scripts/format.sh" "${CMAKE_BINARY_DIR}" --skip-clang-tidy)
 
