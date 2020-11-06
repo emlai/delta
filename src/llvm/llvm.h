@@ -42,7 +42,6 @@ private:
     llvm::Module* module = nullptr;
     std::vector<llvm::Module*> generatedModules;
     std::vector<std::pair<const Function*, llvm::Function*>> functionInstantiations; // TODO(ir) make this a map also?
-    std::unordered_map<const BasicBlock*, llvm::BasicBlock*> generatedBlocks;
     std::unordered_map<const Value*, llvm::Value*> generatedValues;
     std::unordered_map<IRType*, llvm::StructType*> structs;
 };

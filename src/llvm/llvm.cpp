@@ -189,12 +189,7 @@ void LLVMGenerator::codegenFunction(const Function& function) {
 // TODO(ir): add ir tests?
 
 llvm::BasicBlock* LLVMGenerator::getBasicBlock(const BasicBlock* block) {
-    auto it = generatedBlocks.find(block);
-    if (it != generatedBlocks.end()) return it->second;
-
-    auto basicBlock = llvm::BasicBlock::Create(ctx, block->name);
-    generatedBlocks.emplace(block, basicBlock);
-    return basicBlock;
+    return llvm::cast<llvm::BasicBlock>(codegenExpr(block));
 }
 
 // TODO(ir) rename instruction param
@@ -217,24 +212,21 @@ llvm::Value* LLVMGenerator::codegenExprUncached(const Value* instruction) {
         case ValueKind::ReturnInst: {
             auto inst = llvm::cast<ReturnInst>(instruction);
             if (inst->value) {
-                builder.CreateRet(codegenExpr(inst->value));
+                return builder.CreateRet(codegenExpr(inst->value));
             } else {
-                builder.CreateRetVoid();
+                return builder.CreateRetVoid();
             }
-            return nullptr;
         }
         case ValueKind::BranchInst: {
             auto inst = llvm::cast<BranchInst>(instruction);
-            builder.CreateBr(getBasicBlock(inst->destination));
-            return nullptr;
+            return builder.CreateBr(getBasicBlock(inst->destination));
         }
         case ValueKind::CondBranchInst: {
             auto inst = llvm::cast<CondBranchInst>(instruction);
             auto condition = codegenExpr(inst->condition);
             auto trueBlock = getBasicBlock(inst->trueBlock);
             auto falseBlock = getBasicBlock(inst->falseBlock);
-            builder.CreateCondBr(condition, trueBlock, falseBlock);
-            return nullptr;
+            return builder.CreateCondBr(condition, trueBlock, falseBlock);
         }
         case ValueKind::PhiInst: {
             auto inst = llvm::cast<PhiInst>(instruction);
@@ -260,7 +252,7 @@ llvm::Value* LLVMGenerator::codegenExprUncached(const Value* instruction) {
             for (auto& [value, block] : cases) {
                 switchInst->addCase(value, block);
             }
-            return nullptr;
+            return switchInst;
         }
         case ValueKind::LoadInst: {
             auto inst = llvm::cast<LoadInst>(instruction);
@@ -270,8 +262,7 @@ llvm::Value* LLVMGenerator::codegenExprUncached(const Value* instruction) {
             auto inst = llvm::cast<StoreInst>(instruction);
             auto value = codegenExpr(inst->value);
             auto pointer = codegenExpr(inst->pointer);
-            builder.CreateStore(value, pointer);
-            return nullptr;
+            return builder.CreateStore(value, pointer);
         }
         case ValueKind::InsertInst: {
             auto inst = llvm::cast<InsertInst>(instruction);
@@ -429,7 +420,8 @@ llvm::Value* LLVMGenerator::codegenExprUncached(const Value* instruction) {
             return llvm::ConstantExpr::getSizeOf(getLLVMType(inst->type));
         }
         case ValueKind::BasicBlock: {
-            llvm_unreachable("unhandled BasicBlock"); // TODO(ir): basicblock shouldn't be an Value/instruction because these are always unhandled?
+            auto block = llvm::cast<BasicBlock>(instruction);
+            return llvm::BasicBlock::Create(ctx, block->name);
         }
         case ValueKind::Function: {
             auto inst = llvm::cast<Function>(instruction);
