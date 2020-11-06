@@ -1,4 +1,4 @@
-// RUN: check_matches_snapshot %delta -print-ir -w %s
+// RUN: check_matches_snapshot %delta -print-llvm -w %s
 // TODO: Remove -w
 
 interface O {

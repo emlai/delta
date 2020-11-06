@@ -1,4 +1,4 @@
-// RUN: check_matches_snapshot %delta -print-ir -Wno-unused %s
+// RUN: check_matches_snapshot %delta -print-llvm -Wno-unused %s
 
 void main() {
     int? a = null;

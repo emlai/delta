@@ -1,4 +1,4 @@
-// RUN: check_matches_snapshot %delta -print-ir %s -w
+// RUN: check_matches_snapshot %delta -print-llvm %s -w
 
 void f(char* pb) {
     var b = bool(2);

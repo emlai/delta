@@ -1,1 +1,1 @@
-// RUN: check_matches_snapshot %delta -print-ir %p/inputs/multifile/a.delta %p/inputs/multifile/b.delta
+// RUN: check_matches_snapshot %delta -print-llvm %p/inputs/multifile/a.delta %p/inputs/multifile/b.delta

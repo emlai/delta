@@ -1,4 +1,4 @@
-// RUN: check_matches_snapshot %delta -print-ir %s -w
+// RUN: check_matches_snapshot %delta -print-llvm %s -w
 
 interface I {
     void i();

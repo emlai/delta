@@ -1,1 +1,1 @@
-// RUN: check_matches_snapshot %delta -print-ir %s inputs/copyable-type-method-call-before-declaration/a.delta inputs/copyable-type-method-call-before-declaration/b.delta
+// RUN: check_matches_snapshot %delta -print-llvm %s inputs/copyable-type-method-call-before-declaration/a.delta inputs/copyable-type-method-call-before-declaration/b.delta

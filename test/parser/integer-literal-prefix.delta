@@ -1,4 +1,4 @@
-// RUN: check_matches_snapshot %delta -print-ir %s -Wno-unused
+// RUN: check_matches_snapshot %delta -print-llvm %s -Wno-unused
 
 int foo() {
     return (0 - -0xC) * (0o4 + 0b11 * 2);

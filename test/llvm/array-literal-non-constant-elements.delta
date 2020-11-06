@@ -1,4 +1,4 @@
-// RUN: check_matches_snapshot %delta -print-ir %s -Wno-unused
+// RUN: check_matches_snapshot %delta -print-llvm %s -Wno-unused
 
 int[2] f(int foo, int bar) {
     return [foo + bar, foo - bar];

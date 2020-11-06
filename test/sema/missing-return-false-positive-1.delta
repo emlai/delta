@@ -1,4 +1,4 @@
-// RUN: %delta -print-ir %s
+// RUN: %delta -print-llvm %s
 
 int foo(bool b) {
     if (b) {

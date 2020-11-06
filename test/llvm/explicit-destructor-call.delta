@@ -1,4 +1,4 @@
-// RUN: check_matches_snapshot %delta -print-ir %s -Wno-unused
+// RUN: check_matches_snapshot %delta -print-llvm %s -Wno-unused
 
 struct A {
     ~A() {}

@@ -1,4 +1,4 @@
-// RUN: check_matches_snapshot %delta -print-ir %s -Iinputs
+// RUN: check_matches_snapshot %delta -print-llvm %s -Iinputs
 
 import imported_generic_type_constructor
 

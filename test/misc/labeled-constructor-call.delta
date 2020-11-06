@@ -1,4 +1,4 @@
-// RUN: %delta -print-ir %s
+// RUN: %delta -print-llvm %s
 void main() {
     var a = Foo(qux: 4);
 }

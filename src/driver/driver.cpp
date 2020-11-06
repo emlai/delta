@@ -50,10 +50,10 @@ cl::list<std::string> inputs(cl::Positional, cl::desc("<input files>"), cl::sub(
 cl::opt<bool> parse("parse", cl::desc("Parse only"));
 cl::opt<bool> typecheck("typecheck", cl::desc("Parse and type-check only"));
 cl::opt<bool> compileOnly("c", cl::desc("Compile only, generating an object file; don't link"));
-// TODO(ir): Rename IL and IR
-cl::opt<bool> printIL("print-il", cl::desc("Print Delta intermediate representation of main module to stdout"));
-cl::opt<bool> printILAll("print-il-all", cl::desc("Print Delta intermediate representation of all compiled modules to stdout"));
-cl::opt<bool> printIR("print-ir", cl::desc("Print the generated LLVM IR to stdout"));
+cl::opt<bool> printIR("print-ir", cl::desc("Print Delta intermediate representation of main module"));
+cl::opt<bool> printIRAll("print-ir-all", cl::desc("Print Delta intermediate representation of all compiled modules"));
+cl::opt<bool> printLLVM("print-llvm", cl::desc("Print LLVM intermediate representation of main module"));
+// TODO: Add -print-llvm-all option.
 cl::opt<bool> emitAssembly("emit-assembly", cl::desc("Emit assembly code"));
 cl::opt<bool> emitBitcode("emit-llvm-bitcode", cl::desc("Emit LLVM bitcode"));
 cl::opt<bool> emitPositionIndependentCode("fPIC", cl::desc("Emit position-independent code"), cl::sub(*cl::AllSubCommands));
@@ -223,23 +223,24 @@ static int buildExecutable(llvm::ArrayRef<std::string> files, const PackageManif
     }
     irGenerator.emitModule(mainModule);
 
-    if (printILAll) {
+    if (printIRAll) {
         for (auto* module : irGenerator.getGeneratedModules()) {
             module->print(llvm::outs());
         }
         return 0;
-    } else if (printIL) {
+    } else if (printIR) {
         irGenerator.getGeneratedModules().back()->print(llvm::outs());
         return 0;
     }
 
     LLVMGenerator llvmGenerator;
-    llvm::Module* mainLLVMModule; // TODO(ir): Assumed to be the last generated module.
+    llvm::Module* mainLLVMModule;
+    // TODO(ir): Assumed to be the last generated module. return ref from getGeneratedModules so this can be made nicer?
     for (auto* irModule : irGenerator.getGeneratedModules()) {
         mainLLVMModule = &llvmGenerator.codegenModule(*irModule);
     }
 
-    if (printIR) {
+    if (printLLVM) {
         mainLLVMModule->setModuleIdentifier("");
         mainLLVMModule->setSourceFileName("");
         mainLLVMModule->print(llvm::outs(), nullptr);

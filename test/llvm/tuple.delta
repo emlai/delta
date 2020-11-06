@@ -1,4 +1,4 @@
-// RUN: check_matches_snapshot %delta -print-ir %s -Wno-unused
+// RUN: check_matches_snapshot %delta -print-llvm %s -Wno-unused
 
 (bool c, (float e) d) f() {
     var d = (e: -1.0);

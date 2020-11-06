@@ -1,4 +1,4 @@
-// RUN: check_matches_snapshot %delta -print-ir %s
+// RUN: check_matches_snapshot %delta -print-llvm %s
 
 void foo(int(int, int) a) {
     _ = a(1, 2);

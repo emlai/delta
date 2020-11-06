@@ -1,4 +1,4 @@
-// RUN: %not %delta -print-ir %s | %FileCheck %s
+// RUN: %not %delta -print-llvm %s | %FileCheck %s
 
 void main() {
     // CHECK: [[@LINE+1]]:10: error: unexpected ';'

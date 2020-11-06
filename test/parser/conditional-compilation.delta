@@ -1,7 +1,7 @@
-// RUN: %delta -print-ir %s       | %FileCheck %s -check-prefix=CHECK-WITHOUT-FOO
-// RUN: %delta -print-ir %s -DFOO | %FileCheck %s -check-prefix=CHECK-WITH-FOO
-// RUN: %delta -print-ir %s       | %FileCheck %s -check-prefix=CHECK-WITHOUT-BAR
-// RUN: %delta -print-ir %s -DBAR | %FileCheck %s -check-prefix=CHECK-WITH-BAR
+// RUN: %delta -print-llvm %s       | %FileCheck %s -check-prefix=CHECK-WITHOUT-FOO
+// RUN: %delta -print-llvm %s -DFOO | %FileCheck %s -check-prefix=CHECK-WITH-FOO
+// RUN: %delta -print-llvm %s       | %FileCheck %s -check-prefix=CHECK-WITHOUT-BAR
+// RUN: %delta -print-llvm %s -DBAR | %FileCheck %s -check-prefix=CHECK-WITH-BAR
 
 #if FOO
 // CHECK-WITHOUT-FOO-NOT: 666

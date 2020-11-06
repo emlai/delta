@@ -1,4 +1,4 @@
-// RUN: check_matches_snapshot %delta -print-ir %s
+// RUN: check_matches_snapshot %delta -print-llvm %s
 
 int[3] foo = [0, 1, 2];
 

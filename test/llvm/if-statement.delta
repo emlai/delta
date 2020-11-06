@@ -1,4 +1,4 @@
-// RUN: check_matches_snapshot %delta -print-ir %s
+// RUN: check_matches_snapshot %delta -print-llvm %s
 
 extern void foo();
 extern void bar();

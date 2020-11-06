@@ -1,5 +1,5 @@
 // TODO: Add this test back when optional (nullable) ArrayRefs are implemented.
-// RUN: check_matches_snapshot %delta -print-ir %s
+// RUN: check_matches_snapshot %delta -print-llvm %s
 // XFAIL: *
 
 void main() {

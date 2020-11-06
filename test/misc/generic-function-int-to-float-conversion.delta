@@ -1,4 +1,4 @@
-// RUN: %delta -print-ir %s
+// RUN: %delta -print-llvm %s
 
 bool foo<T>(T t) {
     return t < 0;
