@@ -4,7 +4,6 @@
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Verifier.h>
 #pragma warning(pop)
-#include "../ast/decl.h"
 #include "../intermediate/ir.h"
 
 using namespace delta;
@@ -35,10 +34,29 @@ llvm::Type* LLVMGenerator::getBuiltinType(llvm::StringRef name) {
 }
 
 llvm::Type* LLVMGenerator::getStructType(IRStructType* type) {
-    return codegenTypeDecl(type);
+    ASSERT(type);
+    llvm::StructType* structType = nullptr;
+
+    auto it = structs.find(type);
+    if (it != structs.end()) {
+        structType = it->second;
+        ASSERT(structType);
+        return structType;
+    }
+
+    if (type->elementTypes.empty() || type->name.empty()) {
+        structType = llvm::StructType::get(ctx);
+    } else {
+        structType = llvm::StructType::create(ctx, type->getName());
+    }
+
+    structs.try_emplace(type, structType);
+    auto fieldTypes = map(type->elementTypes, [&](IRType* t) { return getLLVMType(t); });
+    structType->setBody(std::move(fieldTypes));
+    return structType;
 }
 
-llvm::Type* LLVMGenerator::getLLVMType(IRType* type, SourceLocation location) {
+llvm::Type* LLVMGenerator::getLLVMType(IRType* type) {
     switch (type->kind) {
         case IRTypeKind::IRBasicType:
             if (auto* builtinType = getBuiltinType(type->getName())) {
@@ -49,7 +67,7 @@ llvm::Type* LLVMGenerator::getLLVMType(IRType* type, SourceLocation location) {
             }
         case IRTypeKind::IRArrayType: {
             auto arrayType = llvm::cast<IRArrayType>(type);
-            return llvm::ArrayType::get(getLLVMType(arrayType->elementType, location), arrayType->size);
+            return llvm::ArrayType::get(getLLVMType(arrayType->elementType), arrayType->size);
         }
         case IRTypeKind::IRFunctionType: {
             auto functionType = llvm::cast<IRFunctionType>(type);
@@ -59,7 +77,7 @@ llvm::Type* LLVMGenerator::getLLVMType(IRType* type, SourceLocation location) {
         }
         case IRTypeKind::IRPointerType: {
             auto pointerType = llvm::cast<IRPointerType>(type);
-            auto* pointeeType = getLLVMType(pointerType->pointee, location);
+            auto* pointeeType = getLLVMType(pointerType->pointee);
             return llvm::PointerType::get(pointeeType->isVoidTy() ? llvm::Type::getInt8Ty(ctx) : pointeeType, 0);
         }
         case IRTypeKind::IRStructType: {
@@ -96,47 +114,47 @@ llvm::Type* LLVMGenerator::getLLVMType(IRType* type, SourceLocation location) {
 }
 
 // TODO(ir): rename all "IRxxx decl"
-llvm::Function* LLVMGenerator::getFunctionProto(const Function& decl) {
-    if (auto* function = module->getFunction(decl.mangledName)) return function;
+llvm::Function* LLVMGenerator::getFunctionProto(const Function& function) {
+    if (auto* llvmFunction = module->getFunction(function.mangledName)) return llvmFunction;
 
     llvm::SmallVector<llvm::Type*, 16> paramTypes;
-    for (auto& param : decl.params) {
+    for (auto& param : function.params) {
         paramTypes.emplace_back(getLLVMType(param.type));
     }
 
-    auto* returnType = getLLVMType(decl.returnType);
-    auto* functionType = llvm::FunctionType::get(returnType, paramTypes, decl.isVariadic);
-    auto* function = llvm::Function::Create(functionType, llvm::Function::ExternalLinkage, decl.mangledName, &*module);
+    auto* returnType = getLLVMType(function.returnType);
+    auto* functionType = llvm::FunctionType::get(returnType, paramTypes, function.isVariadic);
+    auto* llvmFunction = llvm::Function::Create(functionType, llvm::Function::ExternalLinkage, function.mangledName, &*module);
 
-    auto arg = function->arg_begin(), argsEnd = function->arg_end();
-    ASSERT(decl.params.size() == size_t(std::distance(arg, argsEnd)));
-    for (auto param = decl.params.begin(); arg != argsEnd; ++param, ++arg) {
+    auto arg = llvmFunction->arg_begin(), argsEnd = llvmFunction->arg_end();
+    ASSERT(function.params.size() == size_t(std::distance(arg, argsEnd)));
+    for (auto param = function.params.begin(); arg != argsEnd; ++param, ++arg) {
         arg->setName(param->name);
     }
 
     for (auto& instantiation : functionInstantiations) {
-        if (instantiation.function->getName() == decl.mangledName) {
-            return function;
+        if (instantiation.second->getName() == function.mangledName) {
+            return llvmFunction;
         }
     }
 
-    functionInstantiations.push_back({&decl, function});
-    return function;
+    functionInstantiations.push_back({&function, llvmFunction});
+    return llvmFunction;
 }
 
 // TODO(ir): rename all irfunction decls to "function" or "irfunction" or "intermediatefunction"
 // TODO(ir): change params to be pointers, rename decl
-void LLVMGenerator::codegenFunctionBody(const Function& decl, llvm::Function& function) {
+void LLVMGenerator::codegenFunctionBody(const Function& function, llvm::Function& llvmFunction) {
     llvm::IRBuilder<>::InsertPointGuard insertPointGuard(builder);
 
-    auto arg = function.arg_begin();
-    for (auto& param : decl.params) {
+    auto arg = llvmFunction.arg_begin();
+    for (auto& param : function.params) {
         generatedValues.emplace(&param, &*arg++);
     }
 
-    for (auto* block : decl.body) {
+    for (auto* block : function.body) {
         auto llvmBlock = getBasicBlock(block);
-        llvmBlock->insertInto(&function);
+        llvmBlock->insertInto(&llvmFunction);
         builder.SetInsertPoint(llvmBlock);
 
         for (auto* inst : block->insts) {
@@ -145,49 +163,26 @@ void LLVMGenerator::codegenFunctionBody(const Function& decl, llvm::Function& fu
     }
 
     auto insertBlock = builder.GetInsertBlock();
-    if (insertBlock && insertBlock != &function.getEntryBlock() && llvm::pred_empty(insertBlock)) {
+    if (insertBlock && insertBlock != &llvmFunction.getEntryBlock() && llvm::pred_empty(insertBlock)) {
         insertBlock->eraseFromParent();
     }
 }
 
-void LLVMGenerator::codegenFunction(const Function& decl) {
-    llvm::Function* function = getFunctionProto(decl);
+void LLVMGenerator::codegenFunction(const Function& function) {
+    auto llvmFunction = getFunctionProto(function);
 
-    if (!decl.isExtern && function->empty()) {
-        codegenFunctionBody(decl, *function);
+    if (!function.isExtern && llvmFunction->empty()) {
+        codegenFunctionBody(function, *llvmFunction);
     }
 
 #ifndef NDEBUG
-    if (llvm::verifyFunction(*function, &llvm::errs())) {
+    if (llvm::verifyFunction(*llvmFunction, &llvm::errs())) {
         llvm::errs() << '\n';
-        function->getParent()->print(llvm::errs(), nullptr, false, true);
+        llvmFunction->print(llvm::errs(), nullptr, false, true);
         llvm::errs() << '\n';
         ASSERT(false && "llvm::verifyFunction failed");
     }
 #endif
-}
-
-llvm::StructType* LLVMGenerator::codegenTypeDecl(IRStructType* type) {
-    ASSERT(type);
-    llvm::StructType* structType = nullptr;
-
-    auto it = structs.find(type);
-    if (it != structs.end()) {
-        structType = it->second;
-        ASSERT(structType);
-        return structType;
-    }
-
-    if (type->elementTypes.empty() || type->name.empty()) {
-        structType = llvm::StructType::get(ctx);
-    } else {
-        structType = llvm::StructType::create(ctx, type->getName());
-    }
-
-    structs.try_emplace(type, structType);
-    auto fieldTypes = map(type->elementTypes, [&](IRType* t) { return getLLVMType(t); });
-    structType->setBody(std::move(fieldTypes));
-    return structType;
 }
 
 // TODO(ir): Rename "expr" to "value" or "instruction" in llvm/. Rename "codegen" to "build"?
@@ -499,9 +494,9 @@ llvm::Module& LLVMGenerator::codegenModule(const IRModule& sourceModule) {
     for (size_t i = 0; i < functionInstantiations.size(); ++i) {
         auto& instantiation = functionInstantiations[i];
 
-        if (!instantiation.decl->isExtern && instantiation.function->empty()) {
-            codegenFunctionBody(*instantiation.decl, *instantiation.function);
-            ASSERT(!llvm::verifyFunction(*instantiation.function, &llvm::errs()));
+        if (!instantiation.first->isExtern && instantiation.second->empty()) {
+            codegenFunctionBody(*instantiation.first, *instantiation.second);
+            ASSERT(!llvm::verifyFunction(*instantiation.second, &llvm::errs()));
             // TODO(ir) this is duplicated in codegenFunction?
         }
     }
