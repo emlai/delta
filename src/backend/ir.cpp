@@ -15,7 +15,7 @@ BasicBlock::BasicBlock(std::string name, delta::Function* parent) : Value{ValueK
 // TODO(ir) store these in irgenerator?
 static std::unordered_map<TypeBase*, IRType*> irTypes = {{nullptr, nullptr}};
 
-IRType* delta::getILType(Type astType) {
+IRType* delta::getIRType(Type astType) {
     auto it = irTypes.find(astType.getBase());
     if (it != irTypes.end()) return it->second;
 
@@ -26,16 +26,16 @@ IRType* delta::getILType(Type astType) {
             if (astType.isVoid() || Type::isBuiltinScalar(astType.getName())) {
                 irType = new IRBasicType{IRTypeKind::IRBasicType, astType.getName()};
             } else if (astType.isOptionalType() && astType.isImplementedAsPointer()) {
-                irType = getILType(astType.getWrappedType());
+                irType = getIRType(astType.getWrappedType());
             } else if (astType.isEnumType()) {
                 auto enumDecl = llvm::cast<EnumDecl>(astType.getDecl());
-                auto tagType = getILType(enumDecl->getTagType());
+                auto tagType = getIRType(enumDecl->getTagType());
 
                 if (enumDecl->hasAssociatedValues()) {
                     auto unionType = new IRUnionType{IRTypeKind::IRUnionType, {}, ""};
                     irType = new IRStructType{IRTypeKind::IRStructType, {tagType, unionType}, astType.getQualifiedTypeName()};
                     irTypes.emplace(astType.getBase(), irType); // TODO(ir) special case for recursive enum, cleanup
-                    auto associatedTypes = map(enumDecl->getCases(), [](const EnumCase& c) { return getILType(c.getAssociatedType()); });
+                    auto associatedTypes = map(enumDecl->getCases(), [](const EnumCase& c) { return getIRType(c.getAssociatedType()); });
                     unionType->elementTypes = std::move(associatedTypes);
                     return irType;
                 } else {
@@ -44,7 +44,7 @@ IRType* delta::getILType(Type astType) {
             } else if (astType.getDecl()) {
                 auto structType = new IRStructType{IRTypeKind::IRStructType, {}, astType.getQualifiedTypeName()};
                 irTypes.emplace(astType.getBase(), structType); // TODO(ir) special case for recursive struct, cleanup
-                auto elementTypes = map(astType.getDecl()->getFields(), [](const FieldDecl& f) { return getILType(f.getType()); });
+                auto elementTypes = map(astType.getDecl()->getFields(), [](const FieldDecl& f) { return getIRType(f.getType()); });
                 structType->elementTypes = std::move(elementTypes);
                 return structType;
             } else {
@@ -54,30 +54,30 @@ IRType* delta::getILType(Type astType) {
         }
         case TypeKind::ArrayType: {
             if (astType.isArrayWithConstantSize()) {
-                auto elementType = getILType(astType.getElementType());
+                auto elementType = getIRType(astType.getElementType());
                 irType = new IRArrayType{IRTypeKind::IRArrayType, elementType, static_cast<int>(astType.getArraySize())};
             } else if (astType.isArrayWithRuntimeSize()) {
-                irType = getILType(BasicType::get("ArrayRef", astType.getElementType()));
+                irType = getIRType(BasicType::get("ArrayRef", astType.getElementType()));
             } else {
                 ASSERT(astType.isArrayWithUnknownSize());
-                irType = getILType(astType.getElementType().getPointerTo());
+                irType = getIRType(astType.getElementType().getPointerTo());
             }
             break;
         }
         case TypeKind::TupleType: {
-            auto elementTypes = map(astType.getTupleElements(), [](const TupleElement& e) { return getILType(e.type); });
+            auto elementTypes = map(astType.getTupleElements(), [](const TupleElement& e) { return getIRType(e.type); });
             irType = new IRStructType{IRTypeKind::IRStructType, std::move(elementTypes), ""};
             break;
         }
         case TypeKind::FunctionType: {
-            auto returnType = getILType(astType.getReturnType());
-            auto paramTypes = map(astType.getParamTypes(), [](Type t) { return getILType(t); });
+            auto returnType = getIRType(astType.getReturnType());
+            auto paramTypes = map(astType.getParamTypes(), [](Type t) { return getIRType(t); });
             auto functionType = new IRFunctionType{IRTypeKind::IRFunctionType, returnType, std::move(paramTypes)};
             irType = new IRPointerType{IRTypeKind::IRPointerType, functionType};
             break;
         }
         case TypeKind::PointerType: {
-            auto pointeeType = getILType(astType.getPointee());
+            auto pointeeType = getIRType(astType.getPointee());
             irType = new IRPointerType{IRTypeKind::IRPointerType, pointeeType};
             break;
         }
@@ -140,7 +140,7 @@ IRType* Value::getType() const {
                 case Token::LessOrEqual:
                 case Token::Greater:
                 case Token::GreaterOrEqual:
-                    return getILType(Type::getBool());
+                    return getIRType(Type::getBool());
                 case Token::DotDot:
                 case Token::DotDotDot:
                     llvm_unreachable("range operators should be lowered");
@@ -152,7 +152,7 @@ IRType* Value::getType() const {
             auto unary = llvm::cast<UnaryInst>(this);
             switch (unary->op) {
                 case Token::Not:
-                    return getILType(Type::getBool());
+                    return getIRType(Type::getBool());
                 default:
                     return unary->operand->getType();
             }
@@ -198,7 +198,7 @@ IRType* Value::getType() const {
         case ValueKind::UnreachableInst:
             llvm_unreachable("unhandled UnreachableInst");
         case ValueKind::SizeofInst:
-            return getILType(Type::getInt());
+            return getIRType(Type::getInt());
         case ValueKind::BasicBlock:
             llvm_unreachable("unhandled BasicBlock");
         case ValueKind::Function: {
@@ -212,13 +212,13 @@ IRType* Value::getType() const {
         case ValueKind::GlobalVariable:
             return llvm::cast<GlobalVariable>(this)->value->getType()->getPointerTo();
         case ValueKind::ConstantString:
-            return getILType(Type::getChar(Mutability::Const).getPointerTo());
+            return getIRType(Type::getChar(Mutability::Const).getPointerTo());
         case ValueKind::ConstantInt:
             return llvm::cast<ConstantInt>(this)->type;
         case ValueKind::ConstantFP:
             return llvm::cast<ConstantFP>(this)->type;
         case ValueKind::ConstantBool:
-            return getILType(Type::getBool());
+            return getIRType(Type::getBool());
         case ValueKind::ConstantNull:
             return llvm::cast<ConstantNull>(this)->type;
         case ValueKind::Undefined:

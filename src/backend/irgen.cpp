@@ -125,10 +125,6 @@ void IRGenerator::emitDeferredExprsAndDestructorCallsForReturn() {
     scopes.back().clear();
 }
 
-AllocaInst* IRGenerator::createEntryBlockAlloca(Type type, const llvm::Twine& name) {
-    return createEntryBlockAlloca(getILType(type), name);
-}
-
 AllocaInst* IRGenerator::createEntryBlockAlloca(IRType* type, const llvm::Twine& name) {
     // TODO(ir) remove getiltype calls in callsite
     auto alloca = new AllocaInst{ValueKind::AllocaInst, type, name.str()};

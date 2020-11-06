@@ -31,7 +31,7 @@ Value* IRGenerator::emitStringLiteralExpr(const StringLiteralExpr& expr) {
 }
 
 Value* IRGenerator::emitCharacterLiteralExpr(const CharacterLiteralExpr& expr) {
-    return createConstantInt(getILType(expr.getType()), expr.getValue());
+    return createConstantInt(expr.getType(), expr.getValue());
 }
 
 Value* IRGenerator::emitIntLiteralExpr(const IntLiteralExpr& expr) {
@@ -516,7 +516,7 @@ Value* IRGenerator::emitIndexExpr(const IndexExpr& expr) {
         return createGEP(ptr, {index});
     }
 
-    if (value->getType()->isPointerType() && value->getType()->getPointee()->isPointerType() && value->getType()->getPointee()->equals(getILType(lhsType))) {
+    if (value->getType()->isPointerType() && value->getType()->getPointee()->isPointerType() && value->getType()->getPointee()->equals(getIRType(lhsType))) {
         value = createLoad(value);
     }
 
@@ -653,13 +653,13 @@ Value* IRGenerator::emitExpr(const Expr& expr) {
     if (value) {
         // FIXME: Temporary
         if (auto implicitCastExpr = llvm::dyn_cast<ImplicitCastExpr>(&expr)) {
-            if (value->getType()->isPointerType() && value->getType()->getPointee()->equals(getILType(implicitCastExpr->getOperand()->getType()))) {
+            if (value->getType()->isPointerType() && value->getType()->getPointee()->equals(getIRType(implicitCastExpr->getOperand()->getType()))) {
                 return createLoad(value);
             }
         }
 
         // TODO(ir): are these needed?
-        if (value->getType()->isPointerType() && value->getType()->getPointee()->equals(getILType(expr.getType()))) {
+        if (value->getType()->isPointerType() && value->getType()->getPointee()->equals(getIRType(expr.getType()))) {
             return createLoad(value);
         }
     }
@@ -705,7 +705,7 @@ Value* IRGenerator::emitAutoCast(Value* value, const Expr& expr) {
     }
 
     if (value && expr.hasType()) {
-        auto type = getILType(expr.getType());
+        auto type = getIRType(expr.getType());
 
         // TODO: Why only FP and integers are cast here?
         if (!type->equals(value->getType()) && (value->getType()->isFloatingPoint() || value->getType()->isInteger())) {

@@ -119,7 +119,7 @@ private:
     Value* getFunctionForCall(const CallExpr& call);
     Function* getFunctionProto(const FunctionDecl& decl);
     AllocaInst* createEntryBlockAlloca(IRType* type, const llvm::Twine& name = "");
-    AllocaInst* createEntryBlockAlloca(Type type, const llvm::Twine& name = "");
+    AllocaInst* createEntryBlockAlloca(Type type, const llvm::Twine& name = "") { return createEntryBlockAlloca(getIRType(type), name); }
     AllocaInst* createTempAlloca(Value* value);
     Value* createLoad(Value* value);
     void createStore(Value* value, Value* pointer);
@@ -149,23 +149,20 @@ private:
     // Constants // TODO(ir) remove unused
     Value* createConstantInt(IRType* type, llvm::APSInt value) { return new ConstantInt{ValueKind::ConstantInt, type, std::move(value)}; }
     Value* createConstantInt(IRType* type, int64_t value) { return createConstantInt(type, llvm::APSInt::get(value)); }
-    Value* createConstantInt(Type type, llvm::APSInt value) { return createConstantInt(getILType(type), std::move(value)); }
-    Value* createConstantInt(Type type, int64_t value) { return createConstantInt(getILType(type), llvm::APSInt::get(value)); }
+    Value* createConstantInt(Type type, llvm::APSInt value) { return createConstantInt(getIRType(type), std::move(value)); }
+    Value* createConstantInt(Type type, int64_t value) { return createConstantInt(getIRType(type), llvm::APSInt::get(value)); }
     Value* createConstantFP(IRType* type, llvm::APFloat value) { return new ConstantFP{ValueKind::ConstantFP, type, std::move(value)}; }
     Value* createConstantFP(IRType* type, double value) { return createConstantFP(type, llvm::APFloat(value)); }
-    Value* createConstantFP(Type type, llvm::APFloat value) { return createConstantFP(getILType(type), std::move(value)); }
-    Value* createConstantFP(Type type, double value) { return createConstantFP(getILType(type), llvm::APFloat(value)); }
+    Value* createConstantFP(Type type, llvm::APFloat value) { return createConstantFP(getIRType(type), std::move(value)); }
+    Value* createConstantFP(Type type, double value) { return createConstantFP(getIRType(type), llvm::APFloat(value)); }
     Value* createConstantBool(bool value) { return new ConstantBool{ValueKind::ConstantBool, value}; }
     Value* createConstantNull(IRType* type) {
         ASSERT(type->isPointerType());
         return new ConstantNull{ValueKind::ConstantNull, type};
     }
-    Value* createConstantNull(Type type) {
-        ASSERT(type.isImplementedAsPointer());
-        return createConstantNull(getILType(type));
-    }
+    Value* createConstantNull(Type type) { return createConstantNull(getIRType(type)); }
     Value* createUndefined(IRType* type) { return new Undefined{ValueKind::Undefined, type}; }
-    Value* createUndefined(Type type) { return createUndefined(getILType(type)); }
+    Value* createUndefined(Type type) { return createUndefined(getIRType(type)); }
 
     // Arithmetic/comparison operations
     Value* createBinaryOp(BinaryOperator op, Value* left, Value* right) {
@@ -242,9 +239,9 @@ private:
         return cast;
     }
 
-    Value* createCast(Value* value, Type type, const llvm::Twine& name = "") { return createCast(value, getILType(type), name); }
+    Value* createCast(Value* value, Type type, const llvm::Twine& name = "") { return createCast(value, getIRType(type), name); }
     Value* createGlobalStringPtr(llvm::StringRef value) { return new ConstantString{ValueKind::ConstantString, value}; }
-    Value* createSizeof(Type type) { return new SizeofInst{ValueKind::SizeofInst, getILType(type), ""}; }
+    Value* createSizeof(Type type) { return new SizeofInst{ValueKind::SizeofInst, getIRType(type), ""}; }
 
     SwitchInst* createSwitch(Value* condition, BasicBlock* defaultBlock) {
         auto switchInst = new SwitchInst{ValueKind::SwitchInst, condition, defaultBlock, {}};

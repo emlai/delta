@@ -94,7 +94,7 @@ struct IRUnionType : IRType {
     static bool classof(const IRType* t) { return t->kind == IRTypeKind::IRUnionType; }
 };
 
-IRType* getILType(Type astType);
+IRType* getIRType(Type astType);
 llvm::raw_ostream& operator<<(llvm::raw_ostream& stream, IRType* type);
 
 // TODO(ir): Rename IRGenerator to IRBuilder? And LLVMGenerator to LLVMBuilder?

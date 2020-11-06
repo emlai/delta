@@ -15,13 +15,13 @@ Function* IRGenerator::getFunctionProto(const FunctionDecl& decl) {
         }
     }
 
-    auto params = map(decl.getParams(), [](const ParamDecl& p) { return Parameter{ValueKind::Parameter, getILType(p.getType()), p.getName()}; });
+    auto params = map(decl.getParams(), [](const ParamDecl& p) { return Parameter{ValueKind::Parameter, getIRType(p.getType()), p.getName()}; });
 
     if (decl.isMethodDecl()) {
-        params.insert(params.begin(), Parameter{ValueKind::Parameter, getILType(decl.getTypeDecl()->getType().getPointerTo()), "this"});
+        params.insert(params.begin(), Parameter{ValueKind::Parameter, getIRType(decl.getTypeDecl()->getType().getPointerTo()), "this"});
     }
 
-    auto returnType = getILType(decl.isMain() ? Type::getInt() : decl.getReturnType());
+    auto returnType = getIRType(decl.isMain() ? Type::getInt() : decl.getReturnType());
     auto function = new Function{
         ValueKind::Function, mangledName, returnType, std::move(params), {}, decl.isExtern(), decl.isVariadic(), decl.getLocation(),
     };
