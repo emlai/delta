@@ -4,7 +4,7 @@
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Verifier.h>
 #pragma warning(pop)
-#include "../intermediate/ir.h"
+#include "ir.h"
 
 using namespace delta;
 
@@ -113,7 +113,6 @@ llvm::Type* LLVMGenerator::getLLVMType(IRType* type) {
     llvm_unreachable("all cases handled");
 }
 
-// TODO(ir): rename all "IRxxx decl"
 llvm::Function* LLVMGenerator::getFunctionProto(const Function& function) {
     if (auto* llvmFunction = module->getFunction(function.mangledName)) return llvmFunction;
 
@@ -142,8 +141,7 @@ llvm::Function* LLVMGenerator::getFunctionProto(const Function& function) {
     return llvmFunction;
 }
 
-// TODO(ir): rename all irfunction decls to "function" or "irfunction" or "intermediatefunction"
-// TODO(ir): change params to be pointers, rename decl
+// TODO(ir): change params to be pointers
 void LLVMGenerator::codegenFunctionBody(const Function& function, llvm::Function& llvmFunction) {
     llvm::IRBuilder<>::InsertPointGuard insertPointGuard(builder);
 

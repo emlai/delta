@@ -8,7 +8,7 @@
 #include "../ast/decl.h"
 #include "../ast/expr.h"
 #include "../ast/stmt.h"
-#include "../intermediate/ir.h"
+#include "../backend/ir.h"
 #include "../sema/typecheck.h"
 
 // TODO(ir): Rename "IR" to "IL" or "Intermediate" or to avoid confusion with LLVM IR?
