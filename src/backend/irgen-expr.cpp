@@ -54,7 +54,7 @@ Value* IRGenerator::emitBoolLiteralExpr(const BoolLiteralExpr& expr) {
 }
 
 Value* IRGenerator::emitNullLiteralExpr(const NullLiteralExpr& expr) {
-    if (expr.getType().isPointerTypeInLLVM()) {
+    if (expr.getType().isImplementedAsPointer()) {
         return createConstantNull(expr.getType());
     } else {
         return emitOptionalConstruction(expr.getType().getWrappedType(), nullptr);
@@ -267,7 +267,7 @@ Value* IRGenerator::emitExprForPassing(const Expr& expr, IRType* targetType) {
     }
 
     // Handle implicit conversions to void pointer, and to base type pointer.
-    if (expr.getType().isPointerTypeInLLVM() && targetType->isPointerType()) {
+    if (expr.getType().isImplementedAsPointer() && targetType->isPointerType()) {
         return createCast(emitExpr(expr), targetType);
     }
 
@@ -430,27 +430,19 @@ Value* IRGenerator::emitAddressofExpr(const AddressofExpr& expr) {
 
 Value* IRGenerator::emitMemberAccess(Value* baseValue, const FieldDecl* field) {
     auto baseTypeDecl = field->getParentDecl();
-    //    DEBUG_PRINT(baseValue->getType());
     auto baseType = baseValue->getType();
 
-    // TODO(ir) cleanup
-    //    DEBUG_PRINT(baseType);
     if (baseType->isPointerType()) {
         baseType = baseType->getPointee();
-        //        baseValue->print(llvm::errs());
-        //                DEBUG_PRINT(baseType);
+
         if (baseType->isPointerType()) {
-            baseType = baseType->getPointee();
             baseValue = createLoad(baseValue);
-            //            baseValue->print(llvm::errs());
-            //                        DEBUG_PRINT(baseType);
         }
 
         if (baseTypeDecl->isUnion()) {
             return createCast(baseValue, field->getType().getPointerTo(), field->getName());
         } else {
-            auto index = baseTypeDecl->getFieldIndex(field);
-            return createGEP(baseValue, 0, index, field->getName());
+            return createGEP(baseValue, 0, baseTypeDecl->getFieldIndex(field), field->getName());
         }
     } else {
         auto index = baseTypeDecl->isUnion() ? 0 : baseTypeDecl->getFieldIndex(field);
@@ -539,7 +531,7 @@ Value* IRGenerator::emitUnwrapExpr(const UnwrapExpr& expr) {
     auto* value = emitExpr(expr.getOperand());
     llvm::StringRef message = "Unwrap failed";
 
-    if (expr.getOperand().getType().isPointerTypeInLLVM()) {
+    if (expr.getOperand().getType().isImplementedAsPointer()) {
         emitAssert(value, expr.getLocation(), message);
         return value;
     } else {
@@ -595,7 +587,7 @@ Value* IRGenerator::emitIfExpr(const IfExpr& expr) {
 }
 
 Value* IRGenerator::emitImplicitCastExpr(const ImplicitCastExpr& expr) {
-    if (expr.getType().isOptionalType() && !expr.getType().getWrappedType().isPointerTypeInLLVM() &&
+    if (expr.getType().isOptionalType() && !expr.getType().getWrappedType().isImplementedAsPointer() &&
         expr.getOperand()->getType() == expr.getType().getWrappedType()) {
         return emitOptionalConstruction(expr.getOperand()->getType(), emitExprWithoutAutoCast(*expr.getOperand()));
     }

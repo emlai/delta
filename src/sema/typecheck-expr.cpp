@@ -268,7 +268,7 @@ Type Typechecker::typecheckBinaryExpr(BinaryExpr& expr) {
     }
 
     if (op == Token::PointerEqual || op == Token::PointerNotEqual) {
-        if (!leftType.isPointerTypeInLLVM() || !rightType.isPointerTypeInLLVM()) {
+        if (!leftType.isImplementedAsPointer() || !rightType.isImplementedAsPointer()) {
             ERROR(expr.getLocation(), "both operands to pointer comparison operator must have pointer type");
         }
 

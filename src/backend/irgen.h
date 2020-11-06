@@ -161,7 +161,7 @@ private:
         return new ConstantNull{ValueKind::ConstantNull, type};
     }
     Value* createConstantNull(Type type) {
-        ASSERT(type.isPointerTypeInLLVM());
+        ASSERT(type.isImplementedAsPointer());
         return createConstantNull(getILType(type));
     }
     Value* createUndefined(IRType* type) { return new Undefined{ValueKind::Undefined, type}; }

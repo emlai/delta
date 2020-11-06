@@ -17,7 +17,6 @@ namespace delta {
 
 struct Function;
 struct BasicBlock;
-struct IRBasicType;
 
 enum class IRTypeKind {
     IRBasicType,
@@ -31,7 +30,7 @@ enum class IRTypeKind {
 struct IRType {
     IRTypeKind kind;
 
-    bool isBasicType() { return kind == IRTypeKind::IRBasicType; } // TODO(ir) rename
+    bool isBasicType() { return kind == IRTypeKind::IRBasicType; }
     bool isPointerType() { return kind == IRTypeKind::IRPointerType; }
     bool isFunctionType() { return kind == IRTypeKind::IRFunctionType; }
     bool isArrayType() { return kind == IRTypeKind::IRArrayType; }
@@ -129,7 +128,6 @@ enum class ValueKind {
     ConstantBool,
     ConstantNull,
     Undefined,
-    IRModule,
 };
 
 // TODO(ir) rename to Node or IRNode? value is too generic
@@ -358,7 +356,6 @@ struct IRModule {
     std::vector<GlobalVariable*> globalVariables;
 
     void print(llvm::raw_ostream& stream) const;
-    static bool classof(const Value* v) { return v->kind == ValueKind::IRModule; }
 };
 
 } // namespace delta

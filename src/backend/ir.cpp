@@ -6,9 +6,6 @@
 
 using namespace delta;
 
-// TODO(ir): Rename IRxxxInst to simply xxxInst, for consistency with xxxDecl, xxxStmt, and xxxExpr.
-// TODO(ir): add check_matches_ir?
-
 BasicBlock::BasicBlock(std::string name, delta::Function* parent) : Value{ValueKind::BasicBlock}, name(std::move(name)), parent(parent) {
     if (parent) {
         parent->body.push_back(this);
@@ -18,8 +15,6 @@ BasicBlock::BasicBlock(std::string name, delta::Function* parent) : Value{ValueK
 // TODO(ir) store these in irgenerator?
 static std::unordered_map<TypeBase*, IRType*> irTypes = {{nullptr, nullptr}};
 
-// TODO(ir) rename intermediate/ to ir/ or codegen/ or backend/?
-// TODO(ir) check this is consistent with old version of getLLVMType
 IRType* delta::getILType(Type astType) {
     auto it = irTypes.find(astType.getBase());
     if (it != irTypes.end()) return it->second;
@@ -30,7 +25,7 @@ IRType* delta::getILType(Type astType) {
         case TypeKind::BasicType: {
             if (astType.isVoid() || Type::isBuiltinScalar(astType.getName())) {
                 irType = new IRBasicType{IRTypeKind::IRBasicType, astType.getName()};
-            } else if (astType.isOptionalType() && astType.isPointerTypeInLLVM()) {
+            } else if (astType.isOptionalType() && astType.isImplementedAsPointer()) {
                 irType = getILType(astType.getWrappedType());
             } else if (astType.isEnumType()) {
                 auto enumDecl = llvm::cast<EnumDecl>(astType.getDecl());
@@ -94,7 +89,6 @@ IRType* delta::getILType(Type astType) {
     return irType;
 }
 
-// TODO(ir) store type in Value?
 IRType* Value::getType() const {
     switch (kind) {
         case ValueKind::AllocaInst:
@@ -105,9 +99,14 @@ IRType* Value::getType() const {
             llvm_unreachable("unhandled BranchInst");
         case ValueKind::CondBranchInst:
             llvm_unreachable("unhandled CondBranchInst");
-        case ValueKind::PhiInst:
-            // TODO(ir): Check incoming values have same type
-            return llvm::cast<PhiInst>(this)->valuesAndPredecessors[0].first->getType();
+        case ValueKind::PhiInst: {
+            auto phi = llvm::cast<PhiInst>(this);
+            auto firstType = phi->valuesAndPredecessors[0].first->getType();
+            for (size_t i = 1; i < phi->valuesAndPredecessors.size(); ++i) {
+                ASSERT(phi->valuesAndPredecessors[i].first->getType()->equals(firstType));
+            }
+            return firstType;
+        }
         case ValueKind::SwitchInst:
             llvm_unreachable("unhandled SwitchInst");
         case ValueKind::LoadInst:
@@ -186,13 +185,10 @@ IRType* Value::getType() const {
                     break;
                 }
                 case IRTypeKind::IRArrayType:
-                    // TODO(ir) do we gep arrays?
-                    baseType = baseType->getPointee()->getElementType()->getPointerTo();
-                    break;
                 case IRTypeKind::IRBasicType:
                 case IRTypeKind::IRFunctionType:
                 case IRTypeKind::IRPointerType:
-                case IRTypeKind::IRUnionType: // TODO(ir) does union belong to same branch as struct?
+                case IRTypeKind::IRUnionType:
                     llvm_unreachable("invalid const GEP target type");
             }
             return baseType;
@@ -227,8 +223,6 @@ IRType* Value::getType() const {
             return llvm::cast<ConstantNull>(this)->type;
         case ValueKind::Undefined:
             return llvm::cast<Undefined>(this)->type;
-        case ValueKind::IRModule:
-            llvm_unreachable("unhandled IRModule");
     }
 
     llvm_unreachable("unhandled instruction kind");
@@ -295,8 +289,6 @@ std::string Value::getName() const {
             return "null";
         case ValueKind::Undefined:
             return "undefined";
-        case ValueKind::IRModule:
-            llvm_unreachable("unhandled IRModule");
     }
 
     llvm_unreachable("unhandled instruction kind");
@@ -499,8 +491,6 @@ void Value::print(llvm::raw_ostream& stream) const {
             llvm_unreachable("unhandled ConstantNull");
         case ValueKind::Undefined:
             llvm_unreachable("unhandled Undefined");
-        case ValueKind::IRModule:
-            llvm_unreachable("unhandled IRModule");
     }
 
     stream << "\n";

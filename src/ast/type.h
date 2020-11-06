@@ -62,7 +62,7 @@ public:
     bool isFunctionType() const { return getKind() == TypeKind::FunctionType; }
     bool isPointerType() const { return getKind() == TypeKind::PointerType; }
     // TODO(ir) can be removed?
-    bool isPointerTypeInLLVM() const;
+    bool isImplementedAsPointer() const;
     bool isUnresolvedType() const { return getKind() == TypeKind::UnresolvedType; }
     bool isOptionalType() const { return isBasicType() && getName() == "Optional"; }
     bool isBuiltinType() const { return (isBasicType() && isBuiltinScalar(getName())) || isPointerType() || isNull() || isVoid(); }
@@ -126,8 +126,6 @@ public:
     Type getReturnType() const;
     llvm::ArrayRef<Type> getParamTypes() const;
     Type getPointee() const;
-    // TODO(ir) can be removed?
-    Type getPointeeInLLVM() const;
     Type getWrappedType() const;
 
     static Type getVoid(Mutability mutability = Mutability::Mutable, SourceLocation location = SourceLocation());

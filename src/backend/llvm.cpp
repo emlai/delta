@@ -458,9 +458,6 @@ llvm::Value* LLVMGenerator::codegenInst(const Value* v) {
             auto inst = llvm::cast<Undefined>(v);
             return llvm::UndefValue::get(getLLVMType(inst->type));
         }
-        case ValueKind::IRModule: {
-            llvm_unreachable("unhandled IRModule"); // TODO(ir): IRModule shouldn't be an Value/instruction because these are always unhandled?
-        }
     }
     llvm_unreachable("all cases handled");
 }
