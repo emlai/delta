@@ -16,7 +16,7 @@ class StringRef;
 namespace delta {
 
 struct Function;
-struct Block;
+struct BasicBlock;
 struct IRBasicType;
 
 enum class IRTypeKind {
@@ -119,7 +119,7 @@ enum class ValueKind {
     CastInst,
     UnreachableInst,
     SizeofInst,
-    Block,
+    BasicBlock,
     Function,
     Parameter,
     GlobalVariable,
@@ -159,21 +159,21 @@ struct ReturnInst : Instruction {
 };
 
 struct BranchInst : Instruction {
-    Block* destination;
+    BasicBlock* destination;
 
     static bool classof(const Value* v) { return v->kind == ValueKind::BranchInst; }
 };
 
 struct CondBranchInst : Instruction {
     Value* condition;
-    Block* trueBlock;
-    Block* falseBlock;
+    BasicBlock* trueBlock;
+    BasicBlock* falseBlock;
 
     static bool classof(const Value* v) { return v->kind == ValueKind::CondBranchInst; }
 };
 
 struct PhiInst : Instruction {
-    std::vector<std::pair<Value*, Block*>> valuesAndPredecessors;
+    std::vector<std::pair<Value*, BasicBlock*>> valuesAndPredecessors;
     std::string name;
 
     static bool classof(const Value* v) { return v->kind == ValueKind::PhiInst; }
@@ -181,8 +181,8 @@ struct PhiInst : Instruction {
 
 struct SwitchInst : Instruction {
     Value* condition;
-    Block* defaultBlock;
-    std::vector<std::pair<Value*, Block*>> cases;
+    BasicBlock* defaultBlock;
+    std::vector<std::pair<Value*, BasicBlock*>> cases;
 
     static bool classof(const Value* v) { return v->kind == ValueKind::SwitchInst; }
 };
@@ -278,14 +278,13 @@ struct SizeofInst : Instruction {
     static bool classof(const Value* v) { return v->kind == ValueKind::SizeofInst; }
 };
 
-// TODO(ir) rename to BasicBlock?
-struct Block : Value {
+struct BasicBlock : Value {
     std::string name;
     Function* parent;
     std::vector<Instruction*> insts;
 
-    Block(std::string name, Function* parent = nullptr);
-    static bool classof(const Value* v) { return v->kind == ValueKind::Block; }
+    BasicBlock(std::string name, Function* parent = nullptr);
+    static bool classof(const Value* v) { return v->kind == ValueKind::BasicBlock; }
 };
 
 struct Parameter : Value {
@@ -299,7 +298,7 @@ struct Function : Value {
     std::string mangledName;
     IRType* returnType;
     std::vector<Parameter> params;
-    std::vector<Block*> body; // TODO(ir) rename to blocks?
+    std::vector<BasicBlock*> body;
     bool isExtern;
     bool isVariadic;
     SourceLocation location;

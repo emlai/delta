@@ -41,7 +41,7 @@ void IRGenerator::emitFunctionBody(const FunctionDecl& decl, Function& function)
     nameCounter = 0;
     usedNames.clear();
     currentFunction = &function;
-    setInsertPoint(new Block("", &function));
+    setInsertPoint(new BasicBlock("", &function));
     beginScope();
 
     auto arg = function.params.begin();

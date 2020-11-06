@@ -135,9 +135,9 @@ void LLVMGenerator::codegenFunctionBody(const Function& decl, llvm::Function& fu
     }
 
     for (auto* block : decl.body) {
-        auto basicBlock = getBasicBlock(block);
-        basicBlock->insertInto(&function);
-        builder.SetInsertPoint(basicBlock);
+        auto llvmBlock = getBasicBlock(block);
+        llvmBlock->insertInto(&function);
+        builder.SetInsertPoint(llvmBlock);
 
         for (auto* inst : block->insts) {
             codegenExpr(inst);
@@ -193,7 +193,7 @@ llvm::StructType* LLVMGenerator::codegenTypeDecl(IRStructType* type) {
 // TODO(ir): Rename "expr" to "value" or "instruction" in llvm/. Rename "codegen" to "build"?
 // TODO(ir): add ir tests?
 
-llvm::BasicBlock* LLVMGenerator::getBasicBlock(const Block* block) {
+llvm::BasicBlock* LLVMGenerator::getBasicBlock(const BasicBlock* block) {
     auto it = generatedBlocks.find(block);
     if (it != generatedBlocks.end()) return it->second;
 
@@ -433,19 +433,16 @@ llvm::Value* LLVMGenerator::codegenExprUncached(const Value* instruction) {
             auto inst = llvm::cast<SizeofInst>(instruction);
             return llvm::ConstantExpr::getSizeOf(getLLVMType(inst->type));
         }
-        case ValueKind::Block: {
-            auto inst = llvm::cast<Block>(instruction);
-            llvm_unreachable("unhandled Block");
-            // TODO(ir): basicblock shouldn't be an Value/instruction because these are always unhandled?
-            return nullptr;
+        case ValueKind::BasicBlock: {
+            llvm_unreachable("unhandled BasicBlock"); // TODO(ir): basicblock shouldn't be an Value/instruction because these are always unhandled?
         }
         case ValueKind::Function: {
             auto inst = llvm::cast<Function>(instruction);
             return getFunctionProto(*inst);
         }
-        case ValueKind::Parameter:
+        case ValueKind::Parameter: {
             return generatedValues.at(instruction);
-
+        }
         case ValueKind::GlobalVariable: {
             auto inst = llvm::cast<GlobalVariable>(instruction);
             // TODO(ir): Match previous global constant inlining behavior.
@@ -481,10 +478,7 @@ llvm::Value* LLVMGenerator::codegenExprUncached(const Value* instruction) {
             return llvm::UndefValue::get(getLLVMType(inst->type));
         }
         case ValueKind::IRModule: {
-            auto inst = llvm::cast<IRModule>(instruction);
-            llvm_unreachable("unhandled IRModule");
-            // TODO(ir): IRModule shouldn't be an Value/instruction because these are always unhandled?
-            return nullptr;
+            llvm_unreachable("unhandled IRModule"); // TODO(ir): IRModule shouldn't be an Value/instruction because these are always unhandled?
         }
     }
     llvm_unreachable("all cases handled");

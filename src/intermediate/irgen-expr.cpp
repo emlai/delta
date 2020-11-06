@@ -174,8 +174,8 @@ Value* IRGenerator::emitConstantIncrement(const UnaryExpr& expr, int increment) 
 }
 
 Value* IRGenerator::emitLogicalAnd(const Expr& left, const Expr& right) {
-    auto* rhsBlock = new Block("and.rhs", insertBlock->parent);
-    auto* endBlock = new Block("and.end");
+    auto* rhsBlock = new BasicBlock("and.rhs", insertBlock->parent);
+    auto* endBlock = new BasicBlock("and.end");
 
     Value* lhs = emitExpr(left);
     createCondBr(lhs, rhsBlock, endBlock);
@@ -193,8 +193,8 @@ Value* IRGenerator::emitLogicalAnd(const Expr& left, const Expr& right) {
 }
 
 Value* IRGenerator::emitLogicalOr(const Expr& left, const Expr& right) {
-    auto* rhsBlock = new Block("or.rhs", insertBlock->parent);
-    auto* endBlock = new Block("or.end");
+    auto* rhsBlock = new BasicBlock("or.rhs", insertBlock->parent);
+    auto* endBlock = new BasicBlock("or.end");
 
     Value* lhs = emitExpr(left);
     createCondBr(lhs, endBlock, rhsBlock);
@@ -290,8 +290,8 @@ Value* IRGenerator::emitExprForPassing(const Expr& expr, IRType* targetType) {
 void IRGenerator::emitAssert(Value* condition, SourceLocation location, llvm::StringRef message) {
     condition = createIsNull(condition, "assert.condition");
     auto* function = insertBlock->parent;
-    auto* failBlock = new Block("assert.fail", function);
-    auto* successBlock = new Block("assert.success", function);
+    auto* failBlock = new BasicBlock("assert.fail", function);
+    auto* successBlock = new BasicBlock("assert.success", function);
     auto* assertFail = getFunctionProto(*llvm::cast<FunctionDecl>(Module::getStdlibModule()->getSymbolTable().findOne("assertFail")));
     createCondBr(condition, failBlock, successBlock);
     setInsertPoint(failBlock);
@@ -571,9 +571,9 @@ Value* IRGenerator::emitIfExpr(const IfExpr& expr) {
         condition = emitImplicitNullComparison(condition);
     }
     auto* function = currentFunction;
-    auto* thenBlock = new Block("if.then", function);
-    auto* elseBlock = new Block("if.else");
-    auto* endIfBlock = new Block("if.end");
+    auto* thenBlock = new BasicBlock("if.then", function);
+    auto* elseBlock = new BasicBlock("if.else");
+    auto* endIfBlock = new BasicBlock("if.end");
     createCondBr(condition, thenBlock, elseBlock);
 
     setInsertPoint(thenBlock);
@@ -724,6 +724,6 @@ Value* IRGenerator::emitAutoCast(Value* value, const Expr& expr) {
     return value;
 }
 
-void IRGenerator::setInsertPoint(Block* block) {
+void IRGenerator::setInsertPoint(BasicBlock* block) {
     insertBlock = block;
 }

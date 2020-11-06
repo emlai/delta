@@ -32,7 +32,7 @@ private:
     // TODO(ir): Rename to codegenInst.
     llvm::Value* codegenExpr(const Value* instruction);
     llvm::Value* codegenExprUncached(const Value* instruction);
-    llvm::BasicBlock* getBasicBlock(const Block* block);
+    llvm::BasicBlock* getBasicBlock(const BasicBlock* block);
     llvm::Function* getFunctionProto(const Function& function);
     void codegenFunction(const Function& function);
 
@@ -56,7 +56,7 @@ private:
     llvm::Module* module = nullptr;
     std::vector<llvm::Module*> generatedModules;
     std::vector<FunctionInstantiation> functionInstantiations;
-    std::unordered_map<const Block*, llvm::BasicBlock*> generatedBlocks;
+    std::unordered_map<const BasicBlock*, llvm::BasicBlock*> generatedBlocks;
     std::unordered_map<const Value*, llvm::Value*> generatedValues;
     std::unordered_map<IRType*, llvm::StructType*> structs;
 };

@@ -9,7 +9,7 @@ using namespace delta;
 // TODO(ir): Rename IRxxxInst to simply xxxInst, for consistency with xxxDecl, xxxStmt, and xxxExpr.
 // TODO(ir): add check_matches_ir?
 
-Block::Block(std::string name, delta::Function* parent) : Value{ValueKind::Block}, name(std::move(name)), parent(parent) {
+BasicBlock::BasicBlock(std::string name, delta::Function* parent) : Value{ValueKind::BasicBlock}, name(std::move(name)), parent(parent) {
     if (parent) {
         parent->body.push_back(this);
     }
@@ -161,7 +161,7 @@ IRType* Value::getType() const {
         case ValueKind::GEPInst: {
             auto gep = llvm::cast<GEPInst>(this);
             auto baseType = gep->pointer->getType();
-            for (auto _ : llvm::ArrayRef(gep->indexes).drop_front()) {
+            for (size_t i = 1; i < gep->indexes.size(); ++i) {
                 switch (baseType->getPointee()->kind) {
                     case IRTypeKind::IRArrayType:
                         baseType = baseType->getPointee()->getElementType()->getPointerTo();
@@ -203,8 +203,8 @@ IRType* Value::getType() const {
             llvm_unreachable("unhandled UnreachableInst");
         case ValueKind::SizeofInst:
             return getILType(Type::getInt());
-        case ValueKind::Block:
-            llvm_unreachable("unhandled Block");
+        case ValueKind::BasicBlock:
+            llvm_unreachable("unhandled BasicBlock");
         case ValueKind::Function: {
             auto function = llvm::cast<Function>(this);
             auto paramTypes = map(function->params, [](auto& p) { return p.type; });
@@ -272,8 +272,8 @@ std::string Value::getName() const {
             llvm_unreachable("unhandled UnreachableInst");
         case ValueKind::SizeofInst:
             return llvm::cast<SizeofInst>(this)->name;
-        case ValueKind::Block:
-            return llvm::cast<Block>(this)->name;
+        case ValueKind::BasicBlock:
+            return llvm::cast<BasicBlock>(this)->name;
         case ValueKind::Function:
             return llvm::cast<Function>(this)->mangledName;
         case ValueKind::Parameter:
@@ -338,7 +338,7 @@ static std::string formatName(const Value* inst) {
 static std::string formatTypeAndName(const Value* inst) {
     std::string str;
     llvm::raw_string_ostream s(str);
-    if (!isConstant(inst) && inst->kind != ValueKind::Block) {
+    if (!isConstant(inst) && inst->kind != ValueKind::BasicBlock) {
         s << inst->getType() << " ";
     }
     s << formatName(inst);
@@ -452,7 +452,7 @@ void Value::print(llvm::raw_ostream& stream) const {
         }
         case ValueKind::SizeofInst:
             llvm_unreachable("unhandled SizeofInst");
-        case ValueKind::Block:
+        case ValueKind::BasicBlock:
             llvm_unreachable("handled via Function");
         case ValueKind::Function: {
             localNameCounter = 0;

@@ -100,7 +100,7 @@ private:
     Value* emitImplicitCastExpr(const ImplicitCastExpr& expr);
 
     void emitDeferredExprsAndDestructorCallsForReturn();
-    void emitBlock(llvm::ArrayRef<Stmt*> stmts, Block* continuation);
+    void emitBlock(llvm::ArrayRef<Stmt*> stmts, BasicBlock* continuation);
     void emitReturnStmt(const ReturnStmt& stmt);
     void emitVarStmt(const VarStmt& stmt);
     void emitIfStmt(const IfStmt& ifStmt);
@@ -124,12 +124,12 @@ private:
     Value* createLoad(Value* value);
     void createStore(Value* value, Value* pointer);
     Value* createCall(Value* function, llvm::ArrayRef<Value*> args);
-    void createCondBr(Value* condition, Block* trueBlock, Block* falseBlock) {
+    void createCondBr(Value* condition, BasicBlock* trueBlock, BasicBlock* falseBlock) {
         insertBlock->insts.push_back(new CondBranchInst{ValueKind::CondBranchInst, condition, trueBlock, falseBlock});
     }
-    void createBr(Block* destination) { insertBlock->insts.push_back(new BranchInst{ValueKind::BranchInst, destination}); }
+    void createBr(BasicBlock* destination) { insertBlock->insts.push_back(new BranchInst{ValueKind::BranchInst, destination}); }
 
-    Value* createPhi(std::vector<std::pair<Value*, Block*>> valuesAndPredecessors, const llvm::Twine& name = "") {
+    Value* createPhi(std::vector<std::pair<Value*, BasicBlock*>> valuesAndPredecessors, const llvm::Twine& name = "") {
         auto phi = new PhiInst{ValueKind::PhiInst, std::move(valuesAndPredecessors), name.str()};
         insertBlock->insts.push_back(phi);
         return phi;
@@ -246,7 +246,7 @@ private:
     Value* createGlobalStringPtr(llvm::StringRef value) { return new ConstantString{ValueKind::ConstantString, value}; }
     Value* createSizeof(Type type) { return new SizeofInst{ValueKind::SizeofInst, getILType(type), ""}; }
 
-    SwitchInst* createSwitch(Value* condition, Block* defaultBlock) {
+    SwitchInst* createSwitch(Value* condition, BasicBlock* defaultBlock) {
         auto switchInst = new SwitchInst{ValueKind::SwitchInst, condition, defaultBlock, {}};
         insertBlock->insts.push_back(switchInst);
         return switchInst;
@@ -266,7 +266,7 @@ private:
     IRGenScope& globalScope() { return scopes.front(); }
     std::string createName() { return std::to_string(nameCounter++); }
 
-    void setInsertPoint(Block* block);
+    void setInsertPoint(BasicBlock* block);
 
 private:
     struct FunctionInstantiation {
@@ -283,10 +283,10 @@ private:
     const Decl* currentDecl;
 
     /// The basic blocks to branch to on a 'break'/'continue' statement.
-    llvm::SmallVector<Block*, 4> breakTargets;
-    llvm::SmallVector<Block*, 4> continueTargets;
+    llvm::SmallVector<BasicBlock*, 4> breakTargets;
+    llvm::SmallVector<BasicBlock*, 4> continueTargets;
 
-    Block* insertBlock;
+    BasicBlock* insertBlock;
 
     static const int optionalHasValueFieldIndex = 0;
     static const int optionalValueFieldIndex = 1;
