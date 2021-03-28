@@ -112,16 +112,12 @@ struct Token {
 
     Token() = default;
     Token(Token::Kind kind, SourceLocation location, llvm::StringRef string = {});
-    Token::Kind getKind() const { return kind; }
     operator Token::Kind() const { return kind; }
-    llvm::StringRef getString() const { return string; }
-    SourceLocation getLocation() const { return location; }
     bool is(Token::Kind kind) const { return this->kind == kind; }
     bool is(llvm::ArrayRef<Token::Kind> kinds) const;
     llvm::APSInt getIntegerValue() const;
     llvm::APFloat getFloatingPointValue() const;
 
-private:
     Token::Kind kind;
     llvm::StringRef string; ///< The substring in the source code representing this token.
     SourceLocation location;
@@ -129,19 +125,15 @@ private:
 
 struct UnaryOperator {
     UnaryOperator(Token::Kind kind);
-    Token::Kind getKind() const { return kind; }
     operator Token::Kind() const { return kind; }
 
-private:
     Token::Kind kind;
 };
 
 struct BinaryOperator {
     BinaryOperator(Token::Kind kind);
-    Token::Kind getKind() const { return kind; }
     operator Token::Kind() const { return kind; }
 
-private:
     Token::Kind kind;
 };
 

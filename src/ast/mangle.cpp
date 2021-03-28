@@ -120,7 +120,7 @@ std::string delta::mangleFunctionDecl(const FunctionDecl& functionDecl) {
 
         if (auto* typeDecl = functionDecl.getTypeDecl()) {
             mangleIdentifier(stream, typeDecl->getName());
-            mangleGenericArgs(stream, typeDecl->getGenericArgs());
+            mangleGenericArgs(stream, typeDecl->genericArgs);
         }
 
         if (isOperator(functionDecl)) {
@@ -131,14 +131,14 @@ std::string delta::mangleFunctionDecl(const FunctionDecl& functionDecl) {
             mangleIdentifier(stream, functionDecl.getName());
         }
 
-        mangleGenericArgs(stream, functionDecl.getGenericArgs());
+        mangleGenericArgs(stream, functionDecl.genericArgs);
         stream << 'E';
 
         for (auto& param : functionDecl.getParams()) {
             if (param.isPublic) {
                 mangleIdentifier(stream, param.getName());
             }
-            mangleType(stream, param.getType());
+            mangleType(stream, param.type);
         }
     }
 

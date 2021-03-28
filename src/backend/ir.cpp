@@ -16,7 +16,7 @@ BasicBlock::BasicBlock(std::string name, delta::Function* parent) : Value { Valu
 static std::unordered_map<TypeBase*, IRType*> irTypes = { { nullptr, nullptr } };
 
 IRType* delta::getIRType(Type astType) {
-    auto it = irTypes.find(astType.getBase());
+    auto it = irTypes.find(astType.base);
     if (it != irTypes.end()) return it->second;
 
     IRType* irType = nullptr;
@@ -34,7 +34,7 @@ IRType* delta::getIRType(Type astType) {
                 if (enumDecl->hasAssociatedValues()) {
                     auto unionType = new IRUnionType { IRTypeKind::IRUnionType, {}, "" };
                     irType = new IRStructType { IRTypeKind::IRStructType, { tagType, unionType }, astType.getQualifiedTypeName() };
-                    irTypes.emplace(astType.getBase(), irType);
+                    irTypes.emplace(astType.base, irType);
                     auto associatedTypes = map(enumDecl->getCases(), [](const EnumCase& c) { return getIRType(c.getAssociatedType()); });
                     unionType->elementTypes = std::move(associatedTypes);
                     return irType;
@@ -43,8 +43,8 @@ IRType* delta::getIRType(Type astType) {
                 }
             } else if (astType.getDecl()) {
                 auto structType = new IRStructType { IRTypeKind::IRStructType, {}, astType.getQualifiedTypeName() };
-                irTypes.emplace(astType.getBase(), structType);
-                auto elementTypes = map(astType.getDecl()->getFields(), [](const FieldDecl& f) { return getIRType(f.getType()); });
+                irTypes.emplace(astType.base, structType);
+                auto elementTypes = map(astType.getDecl()->fields, [](const FieldDecl& f) { return getIRType(f.type); });
                 structType->elementTypes = std::move(elementTypes);
                 return structType;
             } else {
@@ -85,7 +85,7 @@ IRType* delta::getIRType(Type astType) {
             llvm_unreachable("cannot convert unresolved type to IR");
     }
 
-    irTypes.emplace(astType.getBase(), irType);
+    irTypes.emplace(astType.base, irType);
     return irType;
 }
 

@@ -16,15 +16,15 @@ void IRGenerator::emitReturnStmt(const ReturnStmt& stmt) {
 }
 
 void IRGenerator::emitVarStmt(const VarStmt& stmt) {
-    auto* alloca = createEntryBlockAlloca(stmt.getDecl().getType(), stmt.getDecl().getName());
-    setLocalValue(alloca, &stmt.getDecl());
-    auto* initializer = stmt.getDecl().getInitializer();
+    auto* alloca = createEntryBlockAlloca(stmt.decl->type, stmt.decl->getName());
+    setLocalValue(alloca, stmt.decl);
+    auto* initializer = stmt.decl->initializer;
     if (!initializer) return;
 
     if (auto* callExpr = llvm::dyn_cast<CallExpr>(initializer)) {
         if (callExpr->getCalleeDecl()) {
             if (auto* constructorDecl = llvm::dyn_cast<ConstructorDecl>(callExpr->getCalleeDecl())) {
-                if (constructorDecl->getTypeDecl()->getType() == stmt.getDecl().getType()) {
+                if (constructorDecl->getTypeDecl()->getType() == stmt.decl->type) {
                     emitCallExpr(*callExpr, alloca);
                     return;
                 }
@@ -58,7 +58,7 @@ void IRGenerator::emitIfStmt(const IfStmt& ifStmt) {
     // FIXME: Lower implicit null checks such as `if (ptr)` and `if (!ptr)` to null comparisons.
     if (condition->getType()->isPointerType()) {
         condition = emitImplicitNullComparison(condition);
-    } else if (ifStmt.getCondition().getType().isOptionalType() && !ifStmt.getCondition().getType().getWrappedType().isPointerType()) {
+    } else if (ifStmt.getCondition().type.isOptionalType() && !ifStmt.getCondition().type.getWrappedType().isPointerType()) {
         condition = createExtractValue(condition, optionalHasValueFieldIndex);
     }
 
@@ -104,7 +104,7 @@ void IRGenerator::emitSwitchStmt(const SwitchStmt& switchStmt) {
         setInsertPoint(block);
 
         if (auto* associatedValue = switchCase.getAssociatedValue()) {
-            auto type = associatedValue->getType().getPointerTo();
+            auto type = associatedValue->type.getPointerTo();
             auto* associatedValuePtr = createCast(createGEP(enumValue, 1), type, associatedValue->getName());
             setLocalValue(associatedValuePtr, associatedValue);
         }

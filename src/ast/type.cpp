@@ -47,7 +47,7 @@ bool Type::isImplicitlyCopyable() const {
         case TypeKind::ArrayType:
             return !isArrayWithConstantSize() || getElementType().isImplicitlyCopyable();
         case TypeKind::TupleType:
-            return llvm::all_of(llvm::cast<TupleType>(typeBase)->getElements(), [&](auto& element) { return element.type.isImplicitlyCopyable(); });
+            return llvm::all_of(llvm::cast<TupleType>(base)->getElements(), [&](auto& element) { return element.type.isImplicitlyCopyable(); });
         case TypeKind::FunctionType:
         case TypeKind::PointerType:
             return true;
@@ -78,14 +78,14 @@ bool Type::isBuiltinScalar(llvm::StringRef typeName) {
 }
 
 bool Type::isEnumType() const {
-    if (auto* basicType = llvm::dyn_cast<BasicType>(getBase())) {
+    if (auto* basicType = llvm::dyn_cast<BasicType>(base)) {
         return basicType->getDecl() && basicType->getDecl()->isEnumDecl();
     }
     return false;
 }
 
 Type Type::resolve(const llvm::StringMap<Type>& replacements) const {
-    if (!typeBase) return Type(nullptr, mutability, location);
+    if (!base) return Type(nullptr, mutability, location);
 
     switch (getKind()) {
         case TypeKind::BasicType: {
@@ -222,39 +222,39 @@ Type Type::getPointerTo() const {
 }
 
 llvm::StringRef Type::getName() const {
-    return llvm::cast<BasicType>(typeBase)->getName();
+    return llvm::cast<BasicType>(base)->getName();
 }
 
 std::string Type::getQualifiedTypeName() const {
-    return llvm::cast<BasicType>(typeBase)->getQualifiedName();
+    return llvm::cast<BasicType>(base)->getQualifiedName();
 }
 
 Type Type::getElementType() const {
-    return llvm::cast<ArrayType>(typeBase)->getElementType().withLocation(location);
+    return llvm::cast<ArrayType>(base)->getElementType().withLocation(location);
 }
 
 int64_t Type::getArraySize() const {
-    return llvm::cast<ArrayType>(typeBase)->getSize();
+    return llvm::cast<ArrayType>(base)->getSize();
 }
 
 llvm::ArrayRef<TupleElement> Type::getTupleElements() const {
-    return llvm::cast<TupleType>(typeBase)->getElements();
+    return llvm::cast<TupleType>(base)->getElements();
 }
 
 llvm::ArrayRef<Type> Type::getGenericArgs() const {
-    return llvm::cast<BasicType>(typeBase)->getGenericArgs();
+    return llvm::cast<BasicType>(base)->genericArgs;
 }
 
 Type Type::getReturnType() const {
-    return llvm::cast<FunctionType>(typeBase)->getReturnType().withLocation(location);
+    return llvm::cast<FunctionType>(base)->getReturnType().withLocation(location);
 }
 
 llvm::ArrayRef<Type> Type::getParamTypes() const {
-    return llvm::cast<FunctionType>(typeBase)->getParamTypes();
+    return llvm::cast<FunctionType>(base)->getParamTypes();
 }
 
 Type Type::getPointee() const {
-    return llvm::cast<PointerType>(typeBase)->getPointeeType().withLocation(location);
+    return llvm::cast<PointerType>(base)->getPointeeType().withLocation(location);
 }
 
 bool Type::isImplementedAsPointer() const {
@@ -334,7 +334,7 @@ bool Type::containsUnresolvedPlaceholder() const {
 }
 
 TypeDecl* Type::getDecl() const {
-    auto* basicType = llvm::dyn_cast<BasicType>(typeBase);
+    auto* basicType = llvm::dyn_cast<BasicType>(base);
     return basicType ? basicType->getDecl() : nullptr;
 }
 
@@ -344,7 +344,7 @@ DestructorDecl* Type::getDestructor() const {
 }
 
 void Type::printTo(std::ostream& stream) const {
-    switch (typeBase->getKind()) {
+    switch (base->kind) {
         case TypeKind::BasicType: {
             if (isOptionalType()) {
                 getWrappedType().printTo(stream);
@@ -356,7 +356,7 @@ void Type::printTo(std::ostream& stream) const {
             if (!isMutable()) stream << "const ";
             stream << getName();
 
-            auto genericArgs = llvm::cast<BasicType>(typeBase)->getGenericArgs();
+            auto genericArgs = llvm::cast<BasicType>(base)->genericArgs;
             if (!genericArgs.empty()) {
                 stream << "<";
                 for (auto& type : genericArgs) {

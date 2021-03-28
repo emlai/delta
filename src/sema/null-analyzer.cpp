@@ -114,7 +114,7 @@ void NullAnalyzer::analyze(Value* value) {
                     // isConstructorDecl check filters out Optional() calls.
                     if (receiverType.isOptionalType() && !call->expr->getCalleeDecl()->isConstructorDecl() && !isDefinitelyNotNull(call->args[0], call)) {
                         // TODO: Store the implicit 'this' receiver to the call expr during typechecking to simplify this code.
-                        auto location = call->expr->getReceiver() ? call->expr->getReceiver()->getLocation() : call->expr->getLocation();
+                        auto location = call->expr->getReceiver() ? call->expr->getReceiver()->location : call->expr->location;
                         WARN(location, "receiver may be null; unwrap it with a postfix '!' to silence this warning");
                     }
                 }
@@ -126,7 +126,7 @@ void NullAnalyzer::analyze(Value* value) {
             if (llvm::isa<ConstantNull>(binary->right)) {
                 ASSERT(binary->op == Token::Equal || binary->op == Token::NotEqual);
                 if (binary->getExpr() && isDefinitelyNotNull(binary->left, binary)) {
-                    WARN(binary->getExpr()->getLocation(), "value cannot be null here; null check can be removed");
+                    WARN(binary->getExpr()->location, "value cannot be null here; null check can be removed");
                 }
             }
             break;
@@ -134,8 +134,8 @@ void NullAnalyzer::analyze(Value* value) {
         case ValueKind::LoadInst: {
             auto load = llvm::cast<LoadInst>(value);
             if (auto expr = llvm::dyn_cast_or_null<UnaryExpr>(load->expr)) {
-                if (expr->getOperand().getType().isOptionalType() && !isDefinitelyNotNull(load->value, load)) {
-                    WARN(expr->getLocation(), "dereferenced pointer may be null; unwrap it with a postfix '!' to silence this warning");
+                if (expr->getOperand().type.isOptionalType() && !isDefinitelyNotNull(load->value, load)) {
+                    WARN(expr->location, "dereferenced pointer may be null; unwrap it with a postfix '!' to silence this warning");
                 }
             }
             break;
@@ -143,8 +143,8 @@ void NullAnalyzer::analyze(Value* value) {
         case ValueKind::ConstGEPInst: {
             auto gep = llvm::cast<ConstGEPInst>(value);
             if (gep->expr) {
-                if (gep->expr->getBaseExpr()->getType().isOptionalType() && !gep->expr->getBaseExpr()->isThis() && !isDefinitelyNotNull(gep->pointer, gep)) {
-                    WARN(gep->expr->getBaseExpr()->getLocation(), "value may be null; unwrap it with a postfix '!' to silence this warning");
+                if (gep->expr->getBaseExpr()->type.isOptionalType() && !gep->expr->getBaseExpr()->isThis() && !isDefinitelyNotNull(gep->pointer, gep)) {
+                    WARN(gep->expr->getBaseExpr()->location, "value may be null; unwrap it with a postfix '!' to silence this warning");
                 }
             }
             break;

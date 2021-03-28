@@ -95,7 +95,7 @@ private:
     void popScope() { scopes.pop_back(); }
 
     static bool paramsMatch(const ParamDecl& a, const ParamDecl& b) {
-        if (a.getType() != b.getType()) return false;
+        if (a.type != b.type) return false;
         if (a.isPublic && b.isPublic && a.getName() != b.getName()) return false;
         return true;
     }

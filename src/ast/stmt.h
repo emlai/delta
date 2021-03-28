@@ -27,7 +27,6 @@ enum class StmtKind {
 
 struct Stmt {
     virtual ~Stmt() = 0;
-
     bool isReturnStmt() const { return getKind() == StmtKind::ReturnStmt; }
     bool isVarStmt() const { return getKind() == StmtKind::VarStmt; }
     bool isExprStmt() const { return getKind() == StmtKind::ExprStmt; }
@@ -40,16 +39,12 @@ struct Stmt {
     bool isBreakStmt() const { return getKind() == StmtKind::BreakStmt; }
     bool isContinueStmt() const { return getKind() == StmtKind::ContinueStmt; }
     bool isCompoundStmt() const { return getKind() == StmtKind::CompoundStmt; }
-
     StmtKind getKind() const { return kind; }
     bool isBreakable() const;
     bool isContinuable() const;
     Stmt* instantiate(const llvm::StringMap<Type>& genericArgs) const;
-
-protected:
     Stmt(StmtKind kind) : kind(kind) {}
 
-private:
     const StmtKind kind;
 };
 
@@ -59,20 +54,16 @@ struct ReturnStmt : Stmt {
     ReturnStmt(Expr* value, SourceLocation location) : Stmt(StmtKind::ReturnStmt), value(value), location(location) {}
     Expr* getReturnValue() const { return value; }
     void setReturnValue(Expr* expr) { value = expr; }
-    SourceLocation getLocation() const { return location; }
     static bool classof(const Stmt* s) { return s->getKind() == StmtKind::ReturnStmt; }
 
-private:
     Expr* value;
     SourceLocation location;
 };
 
 struct VarStmt : Stmt {
     VarStmt(VarDecl* decl) : Stmt(StmtKind::VarStmt), decl(decl) {}
-    VarDecl& getDecl() const { return *decl; }
     static bool classof(const Stmt* s) { return s->getKind() == StmtKind::VarStmt; }
 
-private:
     VarDecl* decl;
 };
 
@@ -82,7 +73,6 @@ struct ExprStmt : Stmt {
     Expr& getExpr() const { return *expr; }
     static bool classof(const Stmt* s) { return s->getKind() == StmtKind::ExprStmt; }
 
-private:
     Expr* expr;
 };
 
@@ -91,7 +81,6 @@ struct DeferStmt : Stmt {
     Expr& getExpr() const { return *expr; }
     static bool classof(const Stmt* s) { return s->getKind() == StmtKind::DeferStmt; }
 
-private:
     Expr* expr;
 };
 
@@ -105,7 +94,6 @@ struct IfStmt : Stmt {
     llvm::MutableArrayRef<Stmt*> getElseBody() { return elseBody; }
     static bool classof(const Stmt* s) { return s->getKind() == StmtKind::IfStmt; }
 
-private:
     Expr* condition;
     std::vector<Stmt*> thenBody;
     std::vector<Stmt*> elseBody;
@@ -119,7 +107,6 @@ struct SwitchCase {
     llvm::MutableArrayRef<Stmt*> getStmts() { return stmts; }
     void setValue(Expr* expr) { value = expr; }
 
-private:
     Expr* value;
     VarDecl* associatedValue;
     std::vector<Stmt*> stmts;
@@ -135,7 +122,6 @@ struct SwitchStmt : Stmt {
     llvm::MutableArrayRef<Stmt*> getDefaultStmts() { return defaultStmts; }
     static bool classof(const Stmt* s) { return s->getKind() == StmtKind::SwitchStmt; }
 
-private:
     Expr* condition;
     std::vector<SwitchCase> cases;
     std::vector<Stmt*> defaultStmts;
@@ -147,11 +133,9 @@ struct WhileStmt : Stmt {
     Expr& getCondition() const { return *condition; }
     llvm::ArrayRef<Stmt*> getBody() const { return body; }
     llvm::MutableArrayRef<Stmt*> getBody() { return body; }
-    SourceLocation getLocation() const { return location; }
     Stmt* lower();
     static bool classof(const Stmt* s) { return s->getKind() == StmtKind::WhileStmt; }
 
-private:
     Expr* condition;
     std::vector<Stmt*> body;
     SourceLocation location;
@@ -165,10 +149,8 @@ struct ForStmt : Stmt {
     Expr* getIncrement() const { return increment; }
     llvm::ArrayRef<Stmt*> getBody() const { return body; }
     llvm::MutableArrayRef<Stmt*> getBody() { return body; }
-    SourceLocation getLocation() const { return location; }
     static bool classof(const Stmt* s) { return s->getKind() == StmtKind::ForStmt; }
 
-private:
     VarStmt* variable;
     Expr* condition;
     Expr* increment;
@@ -182,11 +164,9 @@ struct ForEachStmt : Stmt {
     VarDecl* getVariable() const { return variable; }
     Expr& getRangeExpr() const { return *range; }
     llvm::ArrayRef<Stmt*> getBody() const { return body; }
-    SourceLocation getLocation() const { return location; }
     Stmt* lower(int nestLevel);
     static bool classof(const Stmt* s) { return s->getKind() == StmtKind::ForEachStmt; }
 
-private:
     VarDecl* variable;
     Expr* range;
     std::vector<Stmt*> body;
@@ -195,19 +175,15 @@ private:
 
 struct BreakStmt : Stmt {
     BreakStmt(SourceLocation location) : Stmt(StmtKind::BreakStmt), location(location) {}
-    SourceLocation getLocation() const { return location; }
     static bool classof(const Stmt* s) { return s->getKind() == StmtKind::BreakStmt; }
 
-private:
     SourceLocation location;
 };
 
 struct ContinueStmt : Stmt {
     ContinueStmt(SourceLocation location) : Stmt(StmtKind::ContinueStmt), location(location) {}
-    SourceLocation getLocation() const { return location; }
     static bool classof(const Stmt* s) { return s->getKind() == StmtKind::ContinueStmt; }
 
-private:
     SourceLocation location;
 };
 
@@ -217,7 +193,6 @@ struct CompoundStmt : Stmt {
     llvm::MutableArrayRef<Stmt*> getBody() { return body; }
     static bool classof(const Stmt* s) { return s->getKind() == StmtKind::CompoundStmt; }
 
-private:
     std::vector<Stmt*> body;
 };
 

@@ -15,7 +15,7 @@ Function* IRGenerator::getFunction(const FunctionDecl& decl) {
         }
     }
 
-    auto params = map(decl.getParams(), [](const ParamDecl& p) { return Parameter { ValueKind::Parameter, getIRType(p.getType()), p.getName().str() }; });
+    auto params = map(decl.getParams(), [](const ParamDecl& p) { return Parameter { ValueKind::Parameter, getIRType(p.type), p.getName().str() }; });
 
     if (decl.isMethodDecl()) {
         params.insert(params.begin(), Parameter { ValueKind::Parameter, getIRType(decl.getTypeDecl()->getType().getPointerTo()), "this" });
@@ -23,7 +23,7 @@ Function* IRGenerator::getFunction(const FunctionDecl& decl) {
 
     auto returnType = getIRType(decl.isMain() ? Type::getInt() : decl.getReturnType());
     auto function = new Function {
-        ValueKind::Function, mangledName, returnType, std::move(params), {}, decl.isExtern(), decl.isVariadic(), decl.getLocation(),
+        ValueKind::Function, mangledName, returnType, std::move(params), {}, decl.isExtern(), decl.isVariadic(), decl.location,
     };
     module->functions.push_back(function);
 
@@ -53,8 +53,8 @@ void IRGenerator::emitFunctionBody(const FunctionDecl& decl, Function& function)
     }
 
     if (decl.isDestructorDecl()) {
-        for (auto& field : decl.getTypeDecl()->getFields()) {
-            if (!field.getType().getDestructor()) continue;
+        for (auto& field : decl.getTypeDecl()->fields) {
+            if (!field.type.getDestructor()) continue;
             deferDestructorCall(emitMemberAccess(&function.params[0], &field), &field);
         }
     }
@@ -93,10 +93,10 @@ Value* IRGenerator::emitVarDecl(const VarDecl& decl) {
         return value;
     }
 
-    ASSERT(decl.getInitializer());
-    Value* value = emitExpr(*decl.getInitializer());
+    ASSERT(decl.initializer);
+    Value* value = emitExpr(*decl.initializer);
 
-    if (decl.getType().isMutable()) {
+    if (decl.type.isMutable()) {
         value = createGlobalVariable(value, decl.getName());
     }
 

@@ -19,7 +19,7 @@ Value* IRGenerator::emitStringLiteralExpr(const StringLiteralExpr& expr) {
 
     for (auto* decl : Module::getStdlibModule()->getSymbolTable().find("string.init")) {
         auto params = llvm::cast<ConstructorDecl>(decl)->getParams();
-        if (params.size() == 2 && params[0].getType().isPointerType() && params[1].getType().isInt()) {
+        if (params.size() == 2 && params[0].type.isPointerType() && params[1].type.isInt()) {
             stringConstructor = getFunction(*llvm::cast<ConstructorDecl>(decl));
             break;
         }
@@ -31,22 +31,22 @@ Value* IRGenerator::emitStringLiteralExpr(const StringLiteralExpr& expr) {
 }
 
 Value* IRGenerator::emitCharacterLiteralExpr(const CharacterLiteralExpr& expr) {
-    return createConstantInt(expr.getType(), expr.getValue());
+    return createConstantInt(expr.type, expr.getValue());
 }
 
 Value* IRGenerator::emitIntLiteralExpr(const IntLiteralExpr& expr) {
     // Integer literals may be typed as floating-point when used in a context
     // that requires a floating-point value. It might make sense to combine
     // IntLiteralExpr and FloatLiteralExpr into a single class.
-    if (expr.getType().isFloatingPoint()) {
-        return createConstantFP(expr.getType(), expr.getValue().roundToDouble());
+    if (expr.type.isFloatingPoint()) {
+        return createConstantFP(expr.type, expr.getValue().roundToDouble());
     }
 
-    return createConstantInt(expr.getType(), expr.getValue().getExtValue());
+    return createConstantInt(expr.type, expr.getValue().getExtValue());
 }
 
 Value* IRGenerator::emitFloatLiteralExpr(const FloatLiteralExpr& expr) {
-    return createConstantFP(expr.getType(), expr.getValue());
+    return createConstantFP(expr.type, expr.getValue());
 }
 
 Value* IRGenerator::emitBoolLiteralExpr(const BoolLiteralExpr& expr) {
@@ -54,10 +54,10 @@ Value* IRGenerator::emitBoolLiteralExpr(const BoolLiteralExpr& expr) {
 }
 
 Value* IRGenerator::emitNullLiteralExpr(const NullLiteralExpr& expr) {
-    if (expr.getType().isImplementedAsPointer()) {
-        return createConstantNull(expr.getType());
+    if (expr.type.isImplementedAsPointer()) {
+        return createConstantNull(expr.type);
     } else {
-        return emitOptionalConstruction(expr.getType().getWrappedType(), nullptr);
+        return emitOptionalConstruction(expr.type.getWrappedType(), nullptr);
     }
 }
 
@@ -84,11 +84,11 @@ Value* IRGenerator::emitOptionalConstruction(Type wrappedType, Value* arg) {
 }
 
 Value* IRGenerator::emitUndefinedLiteralExpr(const UndefinedLiteralExpr& expr) {
-    return createUndefined(expr.getType());
+    return createUndefined(expr.type);
 }
 
 Value* IRGenerator::emitArrayLiteralExpr(const ArrayLiteralExpr& expr) {
-    Value* array = createUndefined(expr.getType());
+    Value* array = createUndefined(expr.type);
     auto index = 0;
 
     for (auto& element : expr.getElements()) {
@@ -100,7 +100,7 @@ Value* IRGenerator::emitArrayLiteralExpr(const ArrayLiteralExpr& expr) {
 }
 
 Value* IRGenerator::emitTupleExpr(const TupleExpr& expr) {
-    Value* tuple = createUndefined(expr.getType());
+    Value* tuple = createUndefined(expr.type);
     int index = 0;
     for (auto& element : expr.getElements()) {
         tuple = createInsertValue(tuple, emitExpr(*element.getValue()), index++);
@@ -137,7 +137,7 @@ Value* IRGenerator::emitUnaryExpr(const UnaryExpr& expr) {
             return emitExprAsPointer(expr.getOperand());
         case Token::Not:
             // FIXME: Temporary hack. Lower implicit null checks such as `if (ptr)` and `if (!ptr)` when expression lowering is implemented.
-            if (expr.getOperand().getType().isOptionalType() && !expr.getOperand().getType().getWrappedType().isPointerType()) {
+            if (expr.getOperand().type.isOptionalType() && !expr.getOperand().type.getWrappedType().isPointerType()) {
                 auto operand = emitExpr(expr.getOperand());
                 auto hasValue = createExtractValue(operand, optionalHasValueFieldIndex);
                 return createNot(hasValue);
@@ -156,7 +156,7 @@ Value* IRGenerator::emitUnaryExpr(const UnaryExpr& expr) {
 
 // TODO: Lower increment and decrement statements to compound assignments so this isn't needed.
 Value* IRGenerator::emitConstantIncrement(const UnaryExpr& expr, int increment) {
-    auto operandType = expr.getOperand().getType();
+    auto operandType = expr.getOperand().type;
     auto* ptr = emitLvalueExpr(expr.getOperand());
     if (operandType.isPointerType() && llvm::isa<AllocaInst>(ptr)) {
         ptr = createLoad(ptr);
@@ -260,22 +260,22 @@ Value* IRGenerator::emitExprForPassing(const Expr& expr, IRType* targetType) {
 
     // TODO: Handle implicit conversions in a separate function.
 
-    if (isBuiltinArrayToArrayRefConversion(expr.getType(), targetType)) {
-        ASSERT(expr.getType().removePointer().isArrayWithConstantSize());
+    if (isBuiltinArrayToArrayRefConversion(expr.type, targetType)) {
+        ASSERT(expr.type.removePointer().isArrayWithConstantSize());
         auto* value = emitExprAsPointer(expr);
         auto* elementPtr = createGEP(value, 0);
         auto* arrayRef = createInsertValue(createUndefined(targetType), elementPtr, 0);
-        auto size = createConstantInt(Type::getInt(), expr.getType().removePointer().getArraySize());
+        auto size = createConstantInt(Type::getInt(), expr.type.removePointer().getArraySize());
         return createInsertValue(arrayRef, size, 1);
     }
 
     // Handle implicit conversions to type 'T[*]'.
-    if (expr.getType().removePointer().isArrayWithConstantSize() && targetType->isPointerType() && !targetType->getPointee()->isArrayType()) {
+    if (expr.type.removePointer().isArrayWithConstantSize() && targetType->isPointerType() && !targetType->getPointee()->isArrayType()) {
         return createCast(emitLvalueExpr(expr), targetType);
     }
 
     // Handle implicit conversions to void pointer, and to base type pointer.
-    if (expr.getType().isImplementedAsPointer() && targetType->isPointerType()) {
+    if (expr.type.isImplementedAsPointer() && targetType->isPointerType()) {
         return createCast(emitExpr(expr), targetType);
     }
 
@@ -335,7 +335,7 @@ Value* IRGenerator::emitEnumCase(const EnumCase& enumCase, llvm::ArrayRef<NamedV
 
 Value* IRGenerator::emitCallExpr(const CallExpr& expr, AllocaInst* thisAllocaForInit) {
     if (expr.isBuiltinConversion()) {
-        return createCast(emitExpr(*expr.getArgs().front().getValue()), expr.getType());
+        return createCast(emitExpr(*expr.getArgs().front().getValue()), expr.type);
     }
 
     if (expr.isBuiltinCast()) {
@@ -343,7 +343,7 @@ Value* IRGenerator::emitCallExpr(const CallExpr& expr, AllocaInst* thisAllocaFor
     }
 
     if (expr.getFunctionName() == "assert") {
-        emitAssert(emitExpr(*expr.getArgs().front().getValue()), &expr, expr.getCallee().getLocation());
+        emitAssert(emitExpr(*expr.getArgs().front().getValue()), &expr, expr.getCallee().location);
         return nullptr;
     }
 
@@ -423,12 +423,12 @@ Value* IRGenerator::emitCallExpr(const CallExpr& expr, AllocaInst* thisAllocaFor
 
 Value* IRGenerator::emitBuiltinCast(const CallExpr& expr) {
     auto* value = emitExpr(*expr.getArgs().front().getValue());
-    auto type = expr.getGenericArgs().front();
+    auto type = expr.genericArgs.front();
     return createCast(value, type);
 }
 
 Value* IRGenerator::emitSizeofExpr(const SizeofExpr& expr) {
-    return createSizeof(expr.getType());
+    return createSizeof(expr.type);
 }
 
 Value* IRGenerator::emitAddressofExpr(const AddressofExpr& expr) {
@@ -437,7 +437,7 @@ Value* IRGenerator::emitAddressofExpr(const AddressofExpr& expr) {
 }
 
 Value* IRGenerator::emitMemberAccess(Value* baseValue, const FieldDecl* field, const MemberExpr* expr) {
-    auto baseTypeDecl = field->getParentDecl();
+    auto baseTypeDecl = llvm::cast<TypeDecl>(field->parent);
 
     if (baseValue->getType()->isPointerType()) {
         if (baseValue->getType()->getPointee()->isPointerType()) {
@@ -445,7 +445,7 @@ Value* IRGenerator::emitMemberAccess(Value* baseValue, const FieldDecl* field, c
         }
 
         if (baseTypeDecl->isUnion()) {
-            return createCast(baseValue, field->getType().getPointerTo(), field->getName());
+            return createCast(baseValue, field->type.getPointerTo(), field->getName());
         } else {
             return createGEP(baseValue, baseTypeDecl->getFieldIndex(field), expr, field->getName());
         }
@@ -478,7 +478,7 @@ Value* IRGenerator::emitMemberExpr(const MemberExpr& expr) {
         return emitEnumCase(*enumCase, {});
     }
 
-    if (expr.getBaseExpr()->getType().removePointer().isTupleType()) {
+    if (expr.getBaseExpr()->type.removePointer().isTupleType()) {
         return emitTupleElementAccess(expr);
     }
 
@@ -487,7 +487,7 @@ Value* IRGenerator::emitMemberExpr(const MemberExpr& expr) {
 
 Value* IRGenerator::emitTupleElementAccess(const MemberExpr& expr) {
     unsigned index = 0;
-    for (auto& element : expr.getBaseExpr()->getType().removePointer().getTupleElements()) {
+    for (auto& element : expr.getBaseExpr()->type.removePointer().getTupleElements()) {
         if (element.name == expr.getMemberName()) break;
         ++index;
     }
@@ -507,19 +507,18 @@ Value* IRGenerator::emitTupleElementAccess(const MemberExpr& expr) {
 Value* IRGenerator::emitIndexedAccess(const Expr& base, const Expr& index) {
     auto* value = emitLvalueExpr(base);
 
-    if (base.getType().isArrayWithRuntimeSize()) {
+    if (base.type.isArrayWithRuntimeSize()) {
         if (value->getType()->isPointerType()) {
             value = createLoad(value);
         }
         value = createExtractValue(value, 0);
         return createGEP(value, { emitExpr(index) });
     } else {
-        if (value->getType()->isPointerType() && value->getType()->getPointee()->isPointerType() &&
-            value->getType()->getPointee()->equals(getIRType(base.getType()))) {
+        if (value->getType()->isPointerType() && value->getType()->getPointee()->isPointerType() && value->getType()->getPointee()->equals(getIRType(base.type))) {
             value = createLoad(value);
         }
 
-        if (base.getType().removeOptional().isArrayWithUnknownSize()) {
+        if (base.type.removeOptional().isArrayWithUnknownSize()) {
             return createGEP(value, { emitExpr(index) });
         } else {
             return createGEP(value, { createConstantInt(Type::getInt(), 0), emitExpr(index) });
@@ -528,7 +527,7 @@ Value* IRGenerator::emitIndexedAccess(const Expr& base, const Expr& index) {
 }
 
 Value* IRGenerator::emitIndexExpr(const IndexExpr& expr) {
-    if (!expr.getBase()->getType().removeOptional().removePointer().isArrayType()) {
+    if (!expr.getBase()->type.removeOptional().removePointer().isArrayType()) {
         return emitCallExpr(expr);
     }
 
@@ -536,7 +535,7 @@ Value* IRGenerator::emitIndexExpr(const IndexExpr& expr) {
 }
 
 Value* IRGenerator::emitIndexAssignmentExpr(const IndexAssignmentExpr& expr) {
-    if (!expr.getBase()->getType().removeOptional().removePointer().isArrayType()) {
+    if (!expr.getBase()->type.removeOptional().removePointer().isArrayType()) {
         return emitCallExpr(expr);
     }
 
@@ -549,11 +548,11 @@ Value* IRGenerator::emitUnwrapExpr(const UnwrapExpr& expr) {
     auto* value = emitExpr(expr.getOperand());
     llvm::StringRef message = "Unwrap failed";
 
-    if (expr.getOperand().getType().isImplementedAsPointer()) {
-        emitAssert(value, &expr, expr.getLocation(), message);
+    if (expr.getOperand().type.isImplementedAsPointer()) {
+        emitAssert(value, &expr, expr.location, message);
         return value;
     } else {
-        emitAssert(createExtractValue(value, optionalHasValueFieldIndex), &expr, expr.getLocation(), message);
+        emitAssert(createExtractValue(value, optionalHasValueFieldIndex), &expr, expr.location, message);
         return createExtractValue(value, optionalValueFieldIndex);
     }
 }
@@ -569,9 +568,9 @@ Value* IRGenerator::emitLambdaExpr(const LambdaExpr& expr) {
     scopes = std::move(scopesBackup);
     if (insertBlockBackup) setInsertPoint(insertBlockBackup);
 
-    VarExpr varExpr(functionDecl->getName().str(), functionDecl->getLocation());
+    VarExpr varExpr(functionDecl->getName().str(), functionDecl->location);
     varExpr.setDecl(functionDecl);
-    varExpr.setType(expr.getType());
+    varExpr.type = expr.type;
     return emitVarExpr(varExpr);
 }
 
@@ -600,12 +599,11 @@ Value* IRGenerator::emitIfExpr(const IfExpr& expr) {
 }
 
 Value* IRGenerator::emitImplicitCastExpr(const ImplicitCastExpr& expr) {
-    if (expr.getType().isOptionalType() && !expr.getType().getWrappedType().isImplementedAsPointer() &&
-        expr.getOperand()->getType() == expr.getType().getWrappedType()) {
-        return emitOptionalConstruction(expr.getOperand()->getType(), emitExprWithoutAutoCast(*expr.getOperand()));
+    if (expr.type.isOptionalType() && !expr.type.getWrappedType().isImplementedAsPointer() && expr.getOperand()->type == expr.type.getWrappedType()) {
+        return emitOptionalConstruction(expr.getOperand()->type, emitExprWithoutAutoCast(*expr.getOperand()));
     }
 
-    if (expr.getOperand()->isStringLiteralExpr() && expr.getType().removeOptional().isPointerType() && expr.getType().removeOptional().getPointee().isChar()) {
+    if (expr.getOperand()->isStringLiteralExpr() && expr.type.removeOptional().isPointerType() && expr.type.removeOptional().getPointee().isChar()) {
         return createGlobalStringPtr(llvm::cast<StringLiteralExpr>(expr.getOperand())->getValue());
     }
 
@@ -668,12 +666,12 @@ Value* IRGenerator::emitExpr(const Expr& expr) {
     if (value) {
         // FIXME: Temporary
         if (auto implicitCastExpr = llvm::dyn_cast<ImplicitCastExpr>(&expr)) {
-            if (value->getType()->isPointerType() && value->getType()->getPointee()->equals(getIRType(implicitCastExpr->getOperand()->getType()))) {
+            if (value->getType()->isPointerType() && value->getType()->getPointee()->equals(getIRType(implicitCastExpr->getOperand()->type))) {
                 return createLoad(value);
             }
         }
 
-        if (value->getType()->isPointerType() && value->getType()->getPointee()->equals(getIRType(expr.getType()))) {
+        if (value->getType()->isPointerType() && value->getType()->getPointee()->equals(getIRType(expr.type))) {
             return createLoad(value);
         }
     }
@@ -700,7 +698,7 @@ Value* IRGenerator::emitExprOrEnumTag(const Expr& expr, Value** enumValue) {
         }
     }
 
-    if (auto* enumDecl = llvm::dyn_cast_or_null<EnumDecl>(expr.getType().getDecl())) {
+    if (auto* enumDecl = llvm::dyn_cast_or_null<EnumDecl>(expr.type.getDecl())) {
         if (enumDecl->hasAssociatedValues()) {
             auto* value = emitLvalueExpr(expr);
             if (enumValue) *enumValue = value;
@@ -713,13 +711,13 @@ Value* IRGenerator::emitExprOrEnumTag(const Expr& expr, Value** enumValue) {
 
 Value* IRGenerator::emitAutoCast(Value* value, const Expr& expr) {
     // Handle optionals that have been implicitly unwrapped due to data-flow analysis.
-    if (expr.hasAssignableType() && expr.getAssignableType().isOptionalType() && !expr.getAssignableType().getWrappedType().isPointerType() &&
-        expr.getType() == expr.getAssignableType().getWrappedType()) {
+    if (expr.assignableType && expr.assignableType.isOptionalType() && !expr.assignableType.getWrappedType().isPointerType() &&
+        expr.type == expr.assignableType.getWrappedType()) {
         return createGEP(value, optionalValueFieldIndex);
     }
 
-    if (value && expr.hasType()) {
-        auto type = getIRType(expr.getType());
+    if (value && expr.type) {
+        auto type = getIRType(expr.type);
 
         // TODO: Why only FP and integers are cast here?
         if (!type->equals(value->getType()) && (value->getType()->isFloatingPoint() || value->getType()->isInteger())) {

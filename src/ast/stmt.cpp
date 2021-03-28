@@ -32,11 +32,11 @@ Stmt* Stmt::instantiate(const llvm::StringMap<Type>& genericArgs) const {
         case StmtKind::ReturnStmt: {
             auto* returnStmt = llvm::cast<ReturnStmt>(this);
             auto returnValue = returnStmt->getReturnValue() ? returnStmt->getReturnValue()->instantiate(genericArgs) : nullptr;
-            return new ReturnStmt(returnValue, returnStmt->getLocation());
+            return new ReturnStmt(returnValue, returnStmt->location);
         }
         case StmtKind::VarStmt: {
             auto* varStmt = llvm::cast<VarStmt>(this);
-            auto instantiation = varStmt->getDecl().instantiate(genericArgs, {});
+            auto instantiation = varStmt->decl->instantiate(genericArgs, {});
             return new VarStmt(llvm::cast<VarDecl>(instantiation));
         }
         case StmtKind::ExprStmt: {
@@ -70,7 +70,7 @@ Stmt* Stmt::instantiate(const llvm::StringMap<Type>& genericArgs) const {
             auto* whileStmt = llvm::cast<WhileStmt>(this);
             auto condition = whileStmt->getCondition().instantiate(genericArgs);
             auto body = ::instantiate(whileStmt->getBody(), genericArgs);
-            return new WhileStmt(condition, std::move(body), whileStmt->getLocation());
+            return new WhileStmt(condition, std::move(body), whileStmt->location);
         }
         case StmtKind::ForStmt: {
             auto* forStmt = llvm::cast<ForStmt>(this);
@@ -78,7 +78,7 @@ Stmt* Stmt::instantiate(const llvm::StringMap<Type>& genericArgs) const {
             auto condition = forStmt->getCondition() ? forStmt->getCondition()->instantiate(genericArgs) : nullptr;
             auto increment = forStmt->getIncrement() ? forStmt->getIncrement()->instantiate(genericArgs) : nullptr;
             auto body = ::instantiate(forStmt->getBody(), genericArgs);
-            return new ForStmt(variable, condition, increment, std::move(body), forStmt->getLocation());
+            return new ForStmt(variable, condition, increment, std::move(body), forStmt->location);
         }
         case StmtKind::ForEachStmt: {
             auto* forEachStmt = llvm::cast<ForEachStmt>(this);
@@ -86,15 +86,15 @@ Stmt* Stmt::instantiate(const llvm::StringMap<Type>& genericArgs) const {
             auto variable = llvm::cast<VarDecl>(forEachStmt->getVariable()->instantiate(genericArgs, {}));
             auto range = forEachStmt->getRangeExpr().instantiate(genericArgs);
             auto body = ::instantiate(forEachStmt->getBody(), genericArgs);
-            return new ForEachStmt(variable, range, std::move(body), forEachStmt->getLocation());
+            return new ForEachStmt(variable, range, std::move(body), forEachStmt->location);
         }
         case StmtKind::BreakStmt: {
             auto* breakStmt = llvm::cast<BreakStmt>(this);
-            return new BreakStmt(breakStmt->getLocation());
+            return new BreakStmt(breakStmt->location);
         }
         case StmtKind::ContinueStmt: {
             auto* continueStmt = llvm::cast<ContinueStmt>(this);
-            return new ContinueStmt(continueStmt->getLocation());
+            return new ContinueStmt(continueStmt->location);
         }
         case StmtKind::CompoundStmt: {
             auto* compoundStmt = llvm::cast<CompoundStmt>(this);
@@ -118,8 +118,8 @@ Stmt* ForEachStmt::lower(int nestLevel) {
     auto iteratorVariableName = "__iterator" + (nestLevel > 0 ? std::to_string(nestLevel) : "");
 
     Expr* iteratorValue;
-    auto* rangeTypeDecl = range->getType().removePointer().getDecl();
-    bool isIterator = rangeTypeDecl && llvm::any_of(rangeTypeDecl->getInterfaces(), [](Type interface) { return interface.getName() == "Iterator"; });
+    auto* rangeTypeDecl = range->type.removePointer().getDecl();
+    bool isIterator = rangeTypeDecl && llvm::any_of(rangeTypeDecl->interfaces, [](Type interface) { return interface.getName() == "Iterator"; });
 
     if (isIterator) {
         iteratorValue = range;
@@ -129,7 +129,7 @@ Stmt* ForEachStmt::lower(int nestLevel) {
     }
 
     auto iteratorVarDecl = new VarDecl(Type(nullptr, Mutability::Mutable, location), std::string(iteratorVariableName), iteratorValue,
-                                       variable->getParentDecl(), AccessLevel::None, *variable->getModule(), location);
+                                       variable->parent, AccessLevel::None, *variable->getModule(), location);
     auto iteratorVarStmt = new VarStmt(iteratorVarDecl);
 
     auto iteratorVarExpr = new VarExpr(std::string(iteratorVariableName), location);
@@ -139,8 +139,8 @@ Stmt* ForEachStmt::lower(int nestLevel) {
     auto iteratorVarExpr2 = new VarExpr(std::string(iteratorVariableName), location);
     auto valueMemberExpr = new MemberExpr(iteratorVarExpr2, "value", location);
     auto valueCallExpr = new CallExpr(valueMemberExpr, std::vector<NamedValue>(), std::vector<Type>(), location);
-    auto loopVariableVarDecl = new VarDecl(variable->getType(), variable->getName().str(), valueCallExpr, variable->getParentDecl(), AccessLevel::None,
-                                           *variable->getModule(), variable->getLocation());
+    auto loopVariableVarDecl = new VarDecl(variable->type, variable->getName().str(), valueCallExpr, variable->parent, AccessLevel::None,
+                                           *variable->getModule(), variable->location);
     auto loopVariableVarStmt = new VarStmt(loopVariableVarDecl);
 
     std::vector<Stmt*> forBody;

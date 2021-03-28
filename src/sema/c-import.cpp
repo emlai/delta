@@ -176,7 +176,7 @@ static TypeDecl* toDelta(const clang::RecordDecl& decl, Module* currentModule) {
 
     for (auto* field : decl.fields()) {
         if (auto fieldDecl = toDelta(*field, *typeDecl)) {
-            typeDecl->getFields().emplace_back(std::move(*fieldDecl));
+            typeDecl->fields.emplace_back(std::move(*fieldDecl));
         } else {
             return nullptr;
         }
@@ -192,14 +192,14 @@ static VarDecl* toDelta(const clang::VarDecl& decl, Module* currentModule) {
 static void addIntegerConstantToSymbolTable(llvm::StringRef name, llvm::APSInt value, clang::QualType qualType, Module& module) {
     auto initializer = new IntLiteralExpr(std::move(value), SourceLocation());
     auto type = toDelta(qualType).withMutability(Mutability::Const);
-    initializer->setType(type);
+    initializer->type = type;
     module.addToSymbolTable(new VarDecl(type, name.str(), initializer, nullptr, AccessLevel::Default, module, SourceLocation()));
 }
 
 static void addFloatConstantToSymbolTable(llvm::StringRef name, llvm::APFloat value, Module& module) {
     auto initializer = new FloatLiteralExpr(std::move(value), SourceLocation());
     auto type = Type::getFloat64(Mutability::Const);
-    initializer->setType(type);
+    initializer->type = type;
     module.addToSymbolTable(new VarDecl(type, name.str(), initializer, nullptr, AccessLevel::Default, module, SourceLocation()));
 }
 

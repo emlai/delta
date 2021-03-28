@@ -91,8 +91,8 @@ private:
     Type typecheckLambdaExpr(LambdaExpr& expr, Type expectedType);
     Type typecheckIfExpr(IfExpr& expr);
 
-    bool hasMethod(TypeDecl& type, FunctionDecl& functionDecl) const;
-    bool providesInterfaceRequirements(TypeDecl& type, TypeDecl& interface, std::string* errorReason) const;
+    bool hasMethod(TypeDecl& typeDecl, FunctionDecl& functionDecl) const;
+    bool providesInterfaceRequirements(TypeDecl& typeDecl, TypeDecl& interface, std::string* errorReason) const;
     /// Returns the converted expression if the conversion succeeds, or null otherwise.
     Expr* convert(Expr* expr, Type type, bool allowPointerToTemporary = false) const;
     /// Returns the converted type when the implicit conversion succeeds, or the null type when it doesn't.

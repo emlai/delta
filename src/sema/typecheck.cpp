@@ -26,7 +26,7 @@ TypeDecl* Typechecker::getTypeDecl(const BasicType& type) {
     decls = findDecls(type.getName());
     if (decls.empty()) return nullptr;
     ASSERT(decls.size() == 1);
-    auto instantiation = llvm::cast<TypeTemplate>(decls[0])->instantiate(type.getGenericArgs());
+    auto instantiation = llvm::cast<TypeTemplate>(decls[0])->instantiate(type.genericArgs);
     getCurrentModule()->addToSymbolTable(*instantiation);
     declsToTypecheck.push_back(instantiation);
     return instantiation;
@@ -71,8 +71,8 @@ llvm::ErrorOr<const Module&> Typechecker::importModule(SourceFile* importer, con
     std::error_code error;
 
     if (manifest) {
-        for (auto& dependency : manifest->getDeclaredDependencies()) {
-            if (dependency.getPackageIdentifier() == moduleName) {
+        for (auto& dependency : manifest->declaredDependencies) {
+            if (dependency.packageIdentifier == moduleName) {
                 error = importModuleSourcesInDirectoryRecursively(dependency.getFileSystemPath(), *module, options);
                 goto done;
             }
@@ -129,7 +129,7 @@ static void checkUnusedDecls(const Module& module) {
 
             if (decl->isFunctionDecl() || decl->isFunctionTemplate()) {
                 if (decl->isMain()) continue;
-                WARN(decl->getLocation(), "unused declaration '" << decl->getName() << "'");
+                WARN(decl->location, "unused declaration '" << decl->getName() << "'");
             }
         }
     }
@@ -150,17 +150,17 @@ void Typechecker::typecheckModule(Module& module, const PackageManifest* manifes
             if (auto typeDecl = llvm::dyn_cast<TypeDecl>(decl)) {
                 llvm::StringMap<Type> genericArgs = { { "This", typeDecl->getType() } };
 
-                for (Type interface : typeDecl->getInterfaces()) {
-                    typecheckType(interface, typeDecl->getAccessLevel());
+                for (Type interface : typeDecl->interfaces) {
+                    typecheckType(interface, typeDecl->accessLevel);
                     std::vector<FieldDecl> inheritedFields;
 
-                    for (auto& field : interface.getDecl()->getFields()) {
+                    for (auto& field : interface.getDecl()->fields) {
                         inheritedFields.push_back(field.instantiate(genericArgs, *typeDecl));
                     }
 
-                    typeDecl->getFields().insert(typeDecl->getFields().begin(), inheritedFields.begin(), inheritedFields.end());
+                    typeDecl->fields.insert(typeDecl->fields.begin(), inheritedFields.begin(), inheritedFields.end());
 
-                    for (auto member : interface.getDecl()->getMethods()) {
+                    for (auto member : interface.getDecl()->methods) {
                         auto methodDecl = llvm::cast<MethodDecl>(member);
                         if (methodDecl->hasBody()) {
                             auto copy = methodDecl->instantiate(genericArgs, *typeDecl);
@@ -251,7 +251,7 @@ Decl* Typechecker::findDecl(llvm::StringRef name, SourceLocation location) const
 
     if (currentFunction) {
         if (auto* typeDecl = currentFunction->getTypeDecl()) {
-            for (auto& field : typeDecl->getFields()) {
+            for (auto& field : typeDecl->fields) {
                 if (field.getName() == name) {
                     return &field;
                 }
@@ -293,7 +293,7 @@ std::vector<Decl*> Typechecker::findDecls(llvm::StringRef name, TypeDecl* receiv
     }
 
     if (receiverTypeDecl) {
-        for (auto& decl : receiverTypeDecl->getMethods()) {
+        for (auto& decl : receiverTypeDecl->methods) {
             if (auto* functionDecl = llvm::dyn_cast<FunctionDecl>(decl)) {
                 if (functionDecl->getName() == name) {
                     decls.emplace_back(decl);
@@ -305,7 +305,7 @@ std::vector<Decl*> Typechecker::findDecls(llvm::StringRef name, TypeDecl* receiv
             }
         }
 
-        for (auto& field : receiverTypeDecl->getFields()) {
+        for (auto& field : receiverTypeDecl->fields) {
             // TODO: Only one comparison should be needed.
             if (field.getName() == name || field.getQualifiedName() == name) {
                 decls.emplace_back(&field);

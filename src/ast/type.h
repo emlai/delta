@@ -32,28 +32,19 @@ enum class TypeKind {
 
 struct TypeBase {
     virtual ~TypeBase() = 0;
-    TypeKind getKind() const { return kind; }
-
-protected:
     TypeBase(TypeKind kind) : kind(kind) {}
 
-private:
     const TypeKind kind;
 };
 
 inline TypeBase::~TypeBase() {}
 
 struct Type {
-    Type() : typeBase(nullptr), mutability(Mutability::Mutable) {}
-    Type(TypeBase* typeBase, Mutability mutability, SourceLocation location) : typeBase(typeBase), mutability(mutability), location(location) {}
-    TypeBase& operator*() const { return *typeBase; }
-    explicit operator bool() const { return typeBase != nullptr; }
-    TypeBase* getBase() const { return typeBase; }
-    SourceLocation getLocation() const { return location; }
+    Type() : base(nullptr), mutability(Mutability::Mutable) {}
+    Type(TypeBase* typeBase, Mutability mutability, SourceLocation location) : base(typeBase), mutability(mutability), location(location) {}
+    explicit operator bool() const { return base != nullptr; }
     void setLocation(SourceLocation location) { this->location = location; }
-    Type withLocation(SourceLocation location) const { return Type(typeBase, mutability, location); }
-
-    // TODO: Remove 'Type' suffix from these methods
+    Type withLocation(SourceLocation location) const { return Type(base, mutability, location); }
     bool isBasicType() const { return getKind() == TypeKind::BasicType; }
     bool isArrayType() const { return getKind() == TypeKind::ArrayType; }
     bool isRangeType() const { return isBasicType() && (getName() == "Range" || getName() == "ClosedRange"); }
@@ -93,7 +84,6 @@ struct Type {
     bool isNull() const;
     bool isUndefined() const;
     bool isNeverType() const { return isBasicType() && getName() == "never"; }
-
     Type resolve(const llvm::StringMap<Type>& replacements) const;
     bool isInteger() const;
     bool isSigned() const;
@@ -103,19 +93,18 @@ struct Type {
     int getIntegerBitWidth() const;
     bool isMutable() const { return mutability == Mutability::Mutable; }
     Mutability getMutability() const { return mutability; }
-    Type withMutability(Mutability m) const { return Type(typeBase, m, location); }
+    Type withMutability(Mutability m) const { return Type(base, m, location); }
     Type getPointerTo() const;
     Type removePointer() const { return isPointerType() ? getPointee() : *this; }
     Type removeOptional() const { return isOptionalType() ? getWrappedType() : *this; }
     Type removeArrayWithUnknownSize() const { return isArrayWithUnknownSize() ? getElementType() : *this; }
-    TypeKind getKind() const { return typeBase->getKind(); }
+    TypeKind getKind() const { return base->kind; }
     TypeDecl* getDecl() const;
     DestructorDecl* getDestructor() const;
     bool equalsIgnoreTopLevelMutable(Type) const;
     bool containsUnresolvedPlaceholder() const;
     void printTo(std::ostream& stream) const;
     std::string toString() const;
-
     llvm::StringRef getName() const;
     std::string getQualifiedTypeName() const;
     Type getElementType() const;
@@ -126,7 +115,6 @@ struct Type {
     llvm::ArrayRef<Type> getParamTypes() const;
     Type getPointee() const;
     Type getWrappedType() const;
-
     static Type getVoid(Mutability mutability = Mutability::Mutable, SourceLocation location = SourceLocation());
     static Type getBool(Mutability mutability = Mutability::Mutable, SourceLocation location = SourceLocation());
     static Type getInt(Mutability mutability = Mutability::Mutable, SourceLocation location = SourceLocation());
@@ -148,13 +136,10 @@ struct Type {
     static Type getChar(Mutability mutability = Mutability::Mutable, SourceLocation location = SourceLocation());
     static Type getNull(Mutability mutability = Mutability::Mutable, SourceLocation location = SourceLocation());
     static Type getUndefined(Mutability mutability = Mutability::Mutable, SourceLocation location = SourceLocation());
-
     static bool isBuiltinScalar(llvm::StringRef typeName);
 
-private:
-    TypeBase* typeBase;
+    TypeBase* base;
     Mutability mutability;
-    // TODO: Add a dedicated class hierarchy for storing source locations with types, like TypeLoc in Clang and Swift.
     SourceLocation location;
 };
 
@@ -162,16 +147,13 @@ void appendGenericArgs(std::string& typeName, llvm::ArrayRef<Type> genericArgs);
 std::string getQualifiedTypeName(llvm::StringRef typeName, llvm::ArrayRef<Type> genericArgs);
 
 struct BasicType : TypeBase {
-    llvm::ArrayRef<Type> getGenericArgs() const { return genericArgs; }
     llvm::StringRef getName() const { return name; }
     std::string getQualifiedName() const { return getQualifiedTypeName(name, genericArgs); }
     TypeDecl* getDecl() const { return decl; }
     void setDecl(TypeDecl* decl) { this->decl = NOTNULL(decl); }
     static Type get(llvm::StringRef name, llvm::ArrayRef<Type> genericArgs, Mutability mutability = Mutability::Mutable,
                     SourceLocation location = SourceLocation());
-    static bool classof(const TypeBase* t) { return t->getKind() == TypeKind::BasicType; }
-
-private:
+    static bool classof(const TypeBase* t) { return t->kind == TypeKind::BasicType; }
     friend Type;
     BasicType(llvm::StringRef name, std::vector<Type>&& genericArgs)
     : TypeBase(TypeKind::BasicType), name(name), genericArgs(std::move(genericArgs)), decl(nullptr) {
@@ -179,7 +161,6 @@ private:
         // ASSERT(!name.empty());
     }
 
-private:
     std::string name;
     std::vector<Type> genericArgs;
     TypeDecl* decl;
@@ -195,7 +176,7 @@ struct ArrayType : TypeBase {
     static const int64_t runtimeSize = -1;
     static const int64_t unknownSize = -2;
     static Type get(Type type, int64_t size, Mutability mutability = Mutability::Mutable, SourceLocation location = SourceLocation());
-    static bool classof(const TypeBase* t) { return t->getKind() == TypeKind::ArrayType; }
+    static bool classof(const TypeBase* t) { return t->kind == TypeKind::ArrayType; }
 
 private:
     ArrayType(Type type, int64_t size) : TypeBase(TypeKind::ArrayType), elementType(type), size(size) {}
@@ -217,7 +198,7 @@ bool operator==(const TupleElement&, const TupleElement&);
 struct TupleType : TypeBase {
     llvm::ArrayRef<TupleElement> getElements() const { return elements; }
     static Type get(std::vector<TupleElement>&& elements, Mutability mutability = Mutability::Mutable, SourceLocation location = SourceLocation());
-    static bool classof(const TypeBase* t) { return t->getKind() == TypeKind::TupleType; }
+    static bool classof(const TypeBase* t) { return t->kind == TypeKind::TupleType; }
 
 private:
     TupleType(std::vector<TupleElement>&& elements) : TypeBase(TypeKind::TupleType), elements(std::move(elements)) {}
@@ -231,7 +212,7 @@ struct FunctionType : TypeBase {
     llvm::ArrayRef<Type> getParamTypes() const { return paramTypes; }
     std::vector<ParamDecl> getParamDecls(SourceLocation location = SourceLocation()) const;
     static Type get(Type returnType, std::vector<Type>&& paramTypes, Mutability mutability = Mutability::Mutable, SourceLocation location = SourceLocation());
-    static bool classof(const TypeBase* t) { return t->getKind() == TypeKind::FunctionType; }
+    static bool classof(const TypeBase* t) { return t->kind == TypeKind::FunctionType; }
 
 private:
     FunctionType(Type returnType, std::vector<Type>&& paramTypes)
@@ -245,7 +226,7 @@ private:
 struct PointerType : TypeBase {
     Type getPointeeType() const { return pointeeType; }
     static Type get(Type pointeeType, Mutability mutability = Mutability::Mutable, SourceLocation location = SourceLocation());
-    static bool classof(const TypeBase* t) { return t->getKind() == TypeKind::PointerType; }
+    static bool classof(const TypeBase* t) { return t->kind == TypeKind::PointerType; }
 
 private:
     PointerType(Type pointeeType) : TypeBase(TypeKind::PointerType), pointeeType(pointeeType) {}
@@ -260,7 +241,7 @@ Type get(Type wrappedType, Mutability mutability = Mutability::Mutable, SourceLo
 
 struct UnresolvedType : TypeBase {
     static Type get(Mutability mutability = Mutability::Mutable, SourceLocation location = SourceLocation());
-    static bool classof(const TypeBase* t) { return t->getKind() == TypeKind::UnresolvedType; }
+    static bool classof(const TypeBase* t) { return t->kind == TypeKind::UnresolvedType; }
 
 private:
     UnresolvedType() : TypeBase(TypeKind::UnresolvedType) {}

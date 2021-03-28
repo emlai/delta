@@ -88,9 +88,9 @@ void IRGenerator::deferEvaluationOf(const Expr& expr) {
 DestructorDecl* IRGenerator::getDefaultDestructor(TypeDecl& typeDecl) {
     ASSERT(!typeDecl.getDestructor());
 
-    for (auto& field : typeDecl.getFields()) {
-        if (field.getType().getDestructor()) {
-            auto destructor = new DestructorDecl(typeDecl, typeDecl.getLocation());
+    for (auto& field : typeDecl.fields) {
+        if (field.type.getDestructor()) {
+            auto destructor = new DestructorDecl(typeDecl, typeDecl.location);
             destructor->setBody({});
             return destructor;
         }
@@ -100,12 +100,11 @@ DestructorDecl* IRGenerator::getDefaultDestructor(TypeDecl& typeDecl) {
 }
 
 void IRGenerator::deferDestructorCall(Value* receiver, const VariableDecl* decl) {
-    ASSERT(decl->getType());
     Function* function = nullptr;
 
-    if (auto* destructor = decl->getType().getDestructor()) {
+    if (auto* destructor = decl->type.getDestructor()) {
         function = getFunction(*destructor);
-    } else if (auto* typeDecl = decl->getType().getDecl()) {
+    } else if (auto* typeDecl = decl->type.getDecl()) {
         if (auto defaultDestructor = getDefaultDestructor(*typeDecl)) {
             function = getFunction(*defaultDestructor);
         }
@@ -167,7 +166,7 @@ Value* IRGenerator::emitAssignmentLHS(const Expr& lhs) {
     if (auto* constructorDecl = llvm::dyn_cast<ConstructorDecl>(currentDecl)) {
         if (auto* varExpr = llvm::dyn_cast<VarExpr>(&lhs)) {
             if (auto* fieldDecl = llvm::dyn_cast<FieldDecl>(varExpr->getDecl())) {
-                if (fieldDecl->getParentDecl() == constructorDecl->getTypeDecl()) {
+                if (fieldDecl->parent == constructorDecl->getTypeDecl()) {
                     return value;
                 }
             }
@@ -175,7 +174,7 @@ Value* IRGenerator::emitAssignmentLHS(const Expr& lhs) {
     }
 
     // Call destructor for LHS.
-    if (auto* basicType = llvm::dyn_cast<BasicType>(lhs.getType().getBase())) {
+    if (auto* basicType = llvm::dyn_cast<BasicType>(lhs.type.base)) {
         if (auto* typeDecl = basicType->getDecl()) {
             if (auto* destructor = typeDecl->getDestructor()) {
                 createDestructorCall(getFunction(*destructor), value);

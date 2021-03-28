@@ -381,14 +381,14 @@ static int buildPackage(llvm::StringRef packageRoot, const char* argv0) {
 
     for (auto& targetRootDir : manifest.getTargetRootDirectories()) {
         llvm::StringRef outputFileName;
-        if (manifest.isMultiTarget() || manifest.getPackageName().empty()) {
+        if (manifest.multitarget || manifest.packageName.empty()) {
             outputFileName = llvm::sys::path::filename(targetRootDir);
         } else {
-            outputFileName = manifest.getPackageName();
+            outputFileName = manifest.packageName;
         }
         auto sourceFiles = getSourceFiles(targetRootDir, manifestPath);
         // TODO: Add support for library packages.
-        int exitStatus = buildExecutable(sourceFiles, &manifest, argv0, manifest.getOutputDirectory(), outputFileName.str());
+        int exitStatus = buildExecutable(sourceFiles, &manifest, argv0, manifest.outputDirectory, outputFileName.str());
         if (exitStatus != 0) return exitStatus;
     }
 

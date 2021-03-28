@@ -56,12 +56,12 @@ static void checkoutGitRevision(llvm::StringRef path, llvm::StringRef revision) 
 void delta::fetchDependencies(llvm::StringRef packageRoot) {
     PackageManifest manifest(packageRoot.str());
 
-    for (auto& dependency : manifest.getDeclaredDependencies()) {
+    for (auto& dependency : manifest.declaredDependencies) {
         auto path = dependency.getFileSystemPath();
 
         if (!llvm::sys::fs::exists(path)) {
             cloneGitRepository(dependency.getGitRepositoryUrl(), path);
-            checkoutGitRevision(path, dependency.getPackageVersion());
+            checkoutGitRevision(path, dependency.packageVersion);
         }
     }
 }

@@ -19,13 +19,13 @@ void Typechecker::checkReturnPointerToLocal(const Expr* returnValue) const {
         switch (varExpr->getDecl()->getKind()) {
             case DeclKind::VarDecl: {
                 auto* varDecl = llvm::cast<VarDecl>(varExpr->getDecl());
-                if (varDecl->getParentDecl() && varDecl->getParentDecl()->isFunctionDecl()) {
-                    localVariableType = varDecl->getType();
+                if (varDecl->parent && varDecl->parent->isFunctionDecl()) {
+                    localVariableType = varDecl->type;
                 }
                 break;
             }
             case DeclKind::ParamDecl:
-                localVariableType = llvm::cast<ParamDecl>(varExpr->getDecl())->getType();
+                localVariableType = llvm::cast<ParamDecl>(varExpr->getDecl())->type;
                 break;
 
             default:
@@ -35,7 +35,7 @@ void Typechecker::checkReturnPointerToLocal(const Expr* returnValue) const {
 
     if (localVariableType && currentFunction->getReturnType().removeOptional().isPointerType() &&
         currentFunction->getReturnType().removeOptional().getPointee().equalsIgnoreTopLevelMutable(localVariableType)) {
-        WARN(returnValue->getLocation(), "returning pointer to local variable (local variables will not exist after the function returns)");
+        WARN(returnValue->location, "returning pointer to local variable (local variables will not exist after the function returns)");
     }
 }
 
@@ -49,7 +49,7 @@ void Typechecker::typecheckReturnStmt(ReturnStmt& stmt) {
 
     if (!stmt.getReturnValue()) {
         if (!currentFunction->getReturnType().isVoid()) {
-            ERROR(stmt.getLocation(), "expected return statement to return a value of type '" << currentFunction->getReturnType() << "'");
+            ERROR(stmt.location, "expected return statement to return a value of type '" << currentFunction->getReturnType() << "'");
         }
         return;
     }
@@ -57,7 +57,7 @@ void Typechecker::typecheckReturnStmt(ReturnStmt& stmt) {
     if (auto converted = convert(stmt.getReturnValue(), currentFunction->getReturnType())) {
         stmt.setReturnValue(converted);
     } else {
-        ERROR(stmt.getLocation(), "mismatching return type '" << returnValueType << "', expected '" << currentFunction->getReturnType() << "'");
+        ERROR(stmt.location, "mismatching return type '" << returnValueType << "', expected '" << currentFunction->getReturnType() << "'");
     }
 
     checkReturnPointerToLocal(stmt.getReturnValue());
@@ -65,14 +65,14 @@ void Typechecker::typecheckReturnStmt(ReturnStmt& stmt) {
 }
 
 void Typechecker::typecheckVarStmt(VarStmt& stmt) {
-    typecheckVarDecl(stmt.getDecl());
+    typecheckVarDecl(*stmt.decl);
 }
 
 void Typechecker::typecheckIfStmt(IfStmt& ifStmt) {
     Type conditionType = typecheckExpr(ifStmt.getCondition()).removePointer();
 
     if (!conditionType.isBool() && !conditionType.isOptionalType()) {
-        ERROR(ifStmt.getCondition().getLocation(), "'if' condition must have type 'bool' or optional type");
+        ERROR(ifStmt.getCondition().location, "'if' condition must have type 'bool' or optional type");
     }
 
     currentControlStmts.push_back(&ifStmt);
@@ -98,7 +98,7 @@ void Typechecker::typecheckSwitchStmt(SwitchStmt& stmt) {
     Type conditionType = typecheckExpr(stmt.getCondition());
 
     if (!conditionType.isInteger() && !conditionType.isChar() && !conditionType.isEnumType()) {
-        ERROR(stmt.getCondition().getLocation(), "switch condition must have integer, char, or enum type, got '" << conditionType << "'");
+        ERROR(stmt.getCondition().location, "switch condition must have integer, char, or enum type, got '" << conditionType << "'");
     }
 
     currentControlStmts.push_back(&stmt);
@@ -109,14 +109,14 @@ void Typechecker::typecheckSwitchStmt(SwitchStmt& stmt) {
         if (auto converted = convert(switchCase.getValue(), conditionType)) {
             switchCase.setValue(converted);
         } else {
-            ERROR(switchCase.getValue()->getLocation(), "case value type '" << caseType << "' doesn't match switch condition type '" << conditionType << "'");
+            ERROR(switchCase.getValue()->location, "case value type '" << caseType << "' doesn't match switch condition type '" << conditionType << "'");
         }
 
         Scope scope(nullptr, &currentModule->getSymbolTable());
 
         if (auto* associatedValue = switchCase.getAssociatedValue()) {
             auto* enumCase = llvm::cast<EnumCase>(llvm::cast<MemberExpr>(switchCase.getValue())->getDecl());
-            associatedValue->setType(enumCase->getAssociatedType());
+            associatedValue->type = enumCase->getAssociatedType();
             typecheckVarDecl(*associatedValue);
         }
 
@@ -143,7 +143,7 @@ void Typechecker::typecheckForStmt(ForStmt& forStmt) {
         Type conditionType = typecheckExpr(*forStmt.getCondition()).removePointer();
 
         if (!conditionType.isBool() && !conditionType.isOptionalType()) {
-            ERROR(forStmt.getCondition()->getLocation(), "loop condition must have type 'bool' or optional type");
+            ERROR(forStmt.getCondition()->location, "loop condition must have type 'bool' or optional type");
         }
     }
 
@@ -162,13 +162,13 @@ void Typechecker::typecheckForStmt(ForStmt& forStmt) {
 
 void Typechecker::typecheckBreakStmt(BreakStmt& breakStmt) {
     if (llvm::none_of(currentControlStmts, [](const Stmt* stmt) { return stmt->isBreakable(); })) {
-        ERROR(breakStmt.getLocation(), "'break' is only allowed inside 'while', 'for', and 'switch' statements");
+        ERROR(breakStmt.location, "'break' is only allowed inside 'while', 'for', and 'switch' statements");
     }
 }
 
 void Typechecker::typecheckContinueStmt(ContinueStmt& continueStmt) {
     if (llvm::none_of(currentControlStmts, [](const Stmt* stmt) { return stmt->isContinuable(); })) {
-        ERROR(continueStmt.getLocation(), "'continue' is only allowed inside 'while' and 'for' statements");
+        ERROR(continueStmt.location, "'continue' is only allowed inside 'while' and 'for' statements");
     }
 }
 

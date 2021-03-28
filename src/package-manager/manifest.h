@@ -13,25 +13,17 @@ struct PackageManifest {
     struct Dependency {
         Dependency(std::string&& packageIdentifier, std::string&& packageVersion)
         : packageIdentifier(std::move(packageIdentifier)), packageVersion(std::move(packageVersion)) {}
-        llvm::StringRef getPackageIdentifier() const { return packageIdentifier; }
-        llvm::StringRef getPackageVersion() const { return packageVersion; }
         std::string getGitRepositoryUrl() const;
         std::string getFileSystemPath() const;
 
-    private:
         std::string packageIdentifier;
         std::string packageVersion;
     };
 
     PackageManifest(std::string&& packageRoot);
-    llvm::StringRef getPackageName() const { return packageName; }
-    llvm::ArrayRef<Dependency> getDeclaredDependencies() const { return declaredDependencies; }
     std::vector<std::string> getTargetRootDirectories() const;
-    bool isMultiTarget() const { return multitarget; }
-    llvm::StringRef getOutputDirectory() const { return outputDirectory; }
     static const char manifestFileName[];
 
-private:
     std::string packageRoot;
     std::string packageName;
     std::vector<Dependency> declaredDependencies;
